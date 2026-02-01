@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoVerse | In-Car Entertainment System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="api-config.js"></script>
+    <style>
+        :root {
+            --bg: #000000;
+            --card-bg: #0a0a0a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --accent: #00d9ff;
+            --accent-secondary: #7c3aed;
+            --border: rgba(255, 255, 255, 0.1);
+            --glow: rgba(0, 217, 255, 0.4);
+            --text: #ffffff;
+            --text-dim: #9ca3af;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body { 
+            background: var(--bg);
+            color: var(--text); 
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* Ambient background */
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 50%, rgba(124, 58, 237, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Main container */
+        .car-system {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-rows: 80px 1fr 100px;
+            height: 100vh;
+            padding: 0;
+        }
+
+        /* Top status bar */
+        .status-bar {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .vehicle-info h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .vehicle-info p {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .status-item i {
+            color: var(--accent);
+            font-size: 1.1rem;
+        }
+
+        /* Main content area */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        .content-area {
+            padding: 30px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* View sections */
+        .view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Entertainment Grid */
+        .entertainment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .ent-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .ent-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 217, 255, 0.2);
+        }
+
+        .ent-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .ent-card i {
+            font-size: 3.5rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+            display: block;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 0 15px var(--glow));
+        }
+
+        .ent-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .ent-card p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            position: relative;
+            z-index: 1;
+        }
+
+        .ent-card .live-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--success);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            z-index: 2;
+            animation: pulse 2s infinite;
+        }
+
+        /* Iframe container for embedded apps */
+        .iframe-container {
+            width: 100%;
+            height: calc(100vh - 280px);
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .iframe-header {
+            background: var(--glass);
+            border-bottom: 1px solid var(--border);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .iframe-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .iframe-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .iframe-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Loading spinner */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: var(--accent);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Right Sidebar */
+        .sidebar {
+            background: var(--card-bg);
+            border-left: 1px solid var(--border);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+        }
+
+        .sidebar-section h4 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 15px;
+        }
+
+        /* Climate Control */
+        .climate-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .temp-value {
+            font-size: 3.5rem;
+            font-weight: 200;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .temp-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .temp-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .temp-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            transform: scale(1.1);
+        }
+
+        /* Trip Info */
+        .trip-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            background: var(--glass);
+            border-radius: 12px;
+        }
+
+        .stat-box .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Navigation Preview */
+        .nav-preview {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .nav-direction {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .nav-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .nav-text h4 {
+            font-size: 1rem;
+            margin-bottom: 3px;
+        }
+
+        .nav-text p {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .nav-btn {
+            flex: 1;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-dim);
+            transition: all 0.3s ease;
+            border: none;
+            background: transparent;
+            position: relative;
+        }
+
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-btn.active {
+            color: var(--accent);
+        }
+
+        .nav-btn.active::before {
+            opacity: 1;
+        }
+
+        .nav-btn i {
+            font-size: 1.8rem;
+        }
+
+        .nav-btn span {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Games Grid */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .game-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+        }
+
+        .game-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        /* Settings */
+        .settings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .setting-info h4 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .setting-info p {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .toggle {
+            width: 50px;
+            height: 26px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle.active::after {
+            left: 26px;
+        }
+
+        /* Scrollbar */
+        .content-area::-webkit-scrollbar,
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content-area::-webkit-scrollbar-track,
+        .sidebar::-webkit-scrollbar-track {
+            background: var(--glass);
+        }
+
+        .content-area::-webkit-scrollbar-thumb,
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .content-area::-webkit-scrollbar-thumb:hover,
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* Fullscreen mode */
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background: var(--bg);
+        }
+
+        .fullscreen .iframe-container {
+            height: calc(100vh - 80px);
+            border-radius: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .status-bar {
+                padding: 0 20px;
+            }
+            
+            .status-left, .status-right {
+                gap: 15px;
+            }
+            
+            .content-area {
+                padding: 20px;
+            }
+            
+            .entertainment-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="ambient-bg"></div>
+
+<div class="car-system">
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-left">
+            <div class="vehicle-info">
+                <h2>Tesla Model S</h2>
+                <p>Plaid • 2024</p>
+            </div>
+        </div>
+        <div class="status-right">
+            <div class="status-item">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span id="speed">75 mph</span>
+            </div>
+            <div class="status-item">
+                <i class="fa-solid fa-battery-three-quarters"></i>
+                <span id="battery">68%</span>
+            </div>
+            <div class="status-item">
+                <i class="fa-solid fa-clock"></i>
+                <span id="time">3:42 PM</span>
+            </div>
+            <div class="status-item">
+                <i class="fa-solid fa-wifi"></i>
+                <span>5G</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="content-area">
+            <!-- HOME VIEW -->
+            <div class="view active" id="view-home">
+                <h2 style="margin-bottom: 25px; font-size: 1.8rem;">Entertainment Hub</h2>
+                
+                <div class="entertainment-grid">
+                    <div class="ent-card" onclick="switchView('movies')">
+                        <span class="live-badge">LIVE</span>
+                        <i class="fa-solid fa-film"></i>
+                        <h3>VazeerFlex</h3>
+                        <p>Movies & TV Shows</p>
+                    </div>
+                    
+                    <div class="ent-card" onclick="switchView('music')">
+                        <span class="live-badge">LIVE</span>
+                        <i class="fa-solid fa-music"></i>
+                        <h3>Music App</h3>
+                        <p>Your Library</p>
+                    </div>
+                    
+                    <div class="ent-card" onclick="switchView('games')">
+                        <i class="fa-solid fa-gamepad"></i>
+                        <h3>Games</h3>
+                        <p>Free Online Games</p>
+                    </div>
+                    
+                    <div class="ent-card" onclick="switchView('news')">
+                        <i class="fa-solid fa-newspaper"></i>
+                        <h3>News</h3>
+                        <p>Latest Headlines</p>
+                    </div>
+                    
+                    <div class="ent-card">
+                        <i class="fa-solid fa-podcast"></i>
+                        <h3>Podcasts</h3>
+                        <p>Your subscriptions</p>
+                    </div>
+                    
+                    <div class="ent-card">
+                        <i class="fa-solid fa-camera"></i>
+                        <h3>Camera View</h3>
+                        <p>360° View</p>
+                    </div>
+                </div>
+
+                <div class="nav-preview">
+                    <div class="nav-direction">
+                        <div class="nav-icon" id="navIcon">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <div class="nav-text">
+                            <h4 id="navInstruction">No active navigation</h4>
+                            <p id="navDistance">Set destination to begin</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-dim);">
+                        <span id="navETA">ETA: --</span>
+                        <span id="navRemaining">-- remaining</span>
+                    </div>
+                    <button onclick="setDestination()" style="margin-top: 15px; width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 12px; color: white; cursor: pointer; font-weight: 600;">
+                        <i class="fa-solid fa-route"></i> Set Destination
+                    </button>
+                </div>
+            </div>
+
+            <!-- MOVIES VIEW (VazeerFlex) -->
+            <div class="view" id="view-movies">
+                <div class="iframe-header">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button class="iframe-btn" onclick="switchView('home')" title="Back to Home" style="width: 45px; height: 45px; font-size: 1.2rem;">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <div>
+                            <h3 style="font-size: 1.2rem;">VazeerFlex - Movies & Shows</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 3px;">Live streaming from your personal library</p>
+                        </div>
+                    </div>
+                    <div class="iframe-controls">
+                        <button class="iframe-btn" onclick="reloadIframe('movies-iframe')" title="Reload">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button class="iframe-btn" onclick="toggleFullscreen('movies-iframe')" title="Fullscreen">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
+                        <button class="iframe-btn" onclick="openExternal('https://vazeerflex.onrender.com/')" title="Open in browser">
+                            <i class="fa-solid fa-external-link"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="iframe-container">
+                    <div class="loading"><i class="fa-solid fa-spinner"></i></div>
+                    <iframe id="movies-iframe" src="https://vazeerflex.onrender.com/" onload="hideLoading(this)"></iframe>
+                </div>
+            </div>
+
+            <!-- MUSIC VIEW (Music App) -->
+            <div class="view" id="view-music">
+                <div class="iframe-header">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button class="iframe-btn" onclick="switchView('home')" title="Back to Home" style="width: 45px; height: 45px; font-size: 1.2rem;">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <div>
+                            <h3 style="font-size: 1.2rem;">Music Player</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 3px;">Your personal music collection</p>
+                        </div>
+                    </div>
+                    <div class="iframe-controls">
+                        <button class="iframe-btn" onclick="reloadIframe('music-iframe')" title="Reload">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button class="iframe-btn" onclick="toggleFullscreen('music-iframe')" title="Fullscreen">
+                            <i class="fa-solid fa-expand"></i>
+                        </button>
+                        <button class="iframe-btn" onclick="openExternal('https://my-music-app-okqt.onrender.com/')" title="Open in browser">
+                            <i class="fa-solid fa-external-link"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="iframe-container">
+                    <div class="loading"><i class="fa-solid fa-spinner"></i></div>
+                    <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)"></iframe>
+                </div>
+            </div>
+
+            <!-- GAMES VIEW -->
+            <div class="view" id="view-games">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h2 style="font-size: 1.8rem;">Game Arcade</h2>
+                    <button class="iframe-btn" onclick="switchView('home')" title="Back to Home" style="width: 45px; height: 45px; font-size: 1.2rem;">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                </div>
+                
+                <div class="games-grid">
+                    <div class="game-card" onclick="openGame('https://www.crazygames.com/')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+                            <i class="fa-solid fa-fire"></i>
+                        </div>
+                        <h3>CrazyGames</h3>
+                        <p>1000+ Free Games</p>
+                    </div>
+                    
+                    <div class="game-card" onclick="openGame('https://poki.com/')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <i class="fa-solid fa-rocket"></i>
+                        </div>
+                        <h3>Poki</h3>
+                        <p>Action & Adventure</p>
+                    </div>
+                    
+                    <div class="game-card" onclick="openGame('https://www.addictinggames.com/')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                            <i class="fa-solid fa-gamepad"></i>
+                        </div>
+                        <h3>Addicting Games</h3>
+                        <p>Puzzle & Strategy</p>
+                    </div>
+                    
+                    <div class="game-card" onclick="openGame('https://www.miniclip.com/')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+                            <i class="fa-solid fa-trophy"></i>
+                        </div>
+                        <h3>Miniclip</h3>
+                        <p>Top Rated Games</p>
+                    </div>
+                    
+                    <div class="game-card" onclick="openGame('https://www.msn.com/en-in/play')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <i class="fa-brands fa-microsoft"></i>
+                        </div>
+                        <h3>MSN Games</h3>
+                        <p>Opens in New Tab</p>
+                    </div>
+                    
+                    <div class="game-card" onclick="openGame('https://www.y8.com/')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <i class="fa-solid fa-dice"></i>
+                        </div>
+                        <h3>Y8 Games</h3>
+                        <p>Multiplayer Games</p>
+                    </div>
+
+                    <div class="game-card" onclick="loadEmbeddedGame('chess')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <i class="fa-solid fa-chess"></i>
+                        </div>
+                        <h3>Chess</h3>
+                        <p>Play in Browser</p>
+                    </div>
+
+                    <div class="game-card" onclick="loadEmbeddedGame('2048')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                            <i class="fa-solid fa-grid"></i>
+                        </div>
+                        <h3>2048</h3>
+                        <p>Puzzle Classic</p>
+                    </div>
+
+                    <div class="game-card" onclick="loadEmbeddedGame('tetris')">
+                        <div class="game-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <i class="fa-solid fa-cubes"></i>
+                        </div>
+                        <h3>Tetris</h3>
+                        <p>Classic Arcade</p>
+                    </div>
+                </div>
+
+                <!-- Embedded Game Container -->
+                <div id="embedded-game-container" style="display: none; margin-top: 30px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 id="game-title" style="font-size: 1.3rem;">Now Playing</h3>
+                        <button onclick="closeEmbeddedGame()" style="padding: 10px 20px; background: var(--accent); border: none; border-radius: 12px; color: white; cursor: pointer;">
+                            <i class="fa-solid fa-xmark"></i> Close Game
+                        </button>
+                    </div>
+                    <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 20px; height: 600px; overflow: hidden;">
+                        <iframe id="game-frame" style="width: 100%; height: 100%; border: none; border-radius: 12px;"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEWS VIEW -->
+            <div class="view" id="view-news">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h2 style="font-size: 1.8rem;">Latest News</h2>
+                    <button class="iframe-btn" onclick="switchView('home')" title="Back to Home" style="width: 45px; height: 45px; font-size: 1.2rem;">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                </div>
+
+                <div class="entertainment-grid">
+                    <div class="ent-card" onclick="openGame('https://www.msn.com/en-in/news')">
+                        <i class="fa-brands fa-microsoft" style="color: #00a4ef;"></i>
+                        <h3>MSN News</h3>
+                        <p>Top Stories</p>
+                    </div>
+
+                    <div class="ent-card" onclick="openGame('https://news.google.com/')">
+                        <i class="fa-brands fa-google" style="color: #4285f4;"></i>
+                        <h3>Google News</h3>
+                        <p>Personalized Feed</p>
+                    </div>
+
+                    <div class="ent-card" onclick="openGame('https://www.bbc.com/news')">
+                        <i class="fa-solid fa-newspaper" style="color: #bb1919;"></i>
+                        <h3>BBC News</h3>
+                        <p>World News</p>
+                    </div>
+
+                    <div class="ent-card" onclick="openGame('https://timesofindia.indiatimes.com/')">
+                        <i class="fa-solid fa-newspaper"></i>
+                        <h3>Times of India</h3>
+                        <p>India News</p>
+                    </div>
+
+                    <div class="ent-card" onclick="openGame('https://www.ndtv.com/')">
+                        <i class="fa-solid fa-tv"></i>
+                        <h3>NDTV</h3>
+                        <p>Live Updates</p>
+                    </div>
+
+                    <div class="ent-card" onclick="openGame('https://www.hindustantimes.com/')">
+                        <i class="fa-solid fa-newspaper"></i>
+                        <h3>Hindustan Times</h3>
+                        <p>Breaking News</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; padding: 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 20px;">
+                    <h3 style="margin-bottom: 15px; opacity: 0.8;">📰 News Opens in New Tab</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-dim); line-height: 1.6;">
+                        Most news websites prevent iframe embedding for security. Click any source above to open news in a new browser tab. This keeps you updated with the latest headlines while you're on the road!
+                    </p>
+                </div>
+            </div>
+
+            <!-- SETTINGS VIEW -->
+            <div class="view" id="view-settings">
+                <h2 style="margin-bottom: 25px; font-size: 1.8rem;">Settings</h2>
+                
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Auto-play Next Track</h4>
+                            <p>Automatically play next song</p>
+                        </div>
+                        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Safety Mode</h4>
+                            <p>Restrict video when driving</p>
+                        </div>
+                        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Bluetooth Audio</h4>
+                            <p>Connected to phone</p>
+                        </div>
+                        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Download over WiFi only</h4>
+                            <p>Save cellular data</p>
+                        </div>
+                        <div class="toggle" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>HD Streaming</h4>
+                            <p>Higher quality video</p>
+                        </div>
+                        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Preload Content</h4>
+                            <p>Cache for offline playback</p>
+                        </div>
+                        <div class="toggle" onclick="this.classList.toggle('active')"></div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 20px; font-size: 1.3rem;">Connected Services</h3>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div style="padding: 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <i class="fa-solid fa-film" style="font-size: 1.5rem; color: var(--accent);"></i>
+                            <div>
+                                <h4>VazeerFlex</h4>
+                                <p style="font-size: 0.8rem; color: var(--text-dim);">vazeerflex.onrender.com</p>
+                            </div>
+                        </div>
+                        <span style="color: var(--success); font-size: 0.85rem;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Connected</span>
+                    </div>
+                    <div style="padding: 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <i class="fa-solid fa-music" style="font-size: 1.5rem; color: var(--accent);"></i>
+                            <div>
+                                <h4>Music App</h4>
+                                <p style="font-size: 0.8rem; color: var(--text-dim);">my-music-app-okqt.onrender.com</p>
+                            </div>
+                        </div>
+                        <span style="color: var(--success); font-size: 0.85rem;"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Connected</span>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 20px; font-size: 1.3rem;">External Links</h3>
+                <div style="padding: 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 16px;">
+                    <p style="font-size: 0.9rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 15px;">
+                        Games and News open in new browser tabs due to website security policies. This ensures you get the full experience without restrictions.
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <span style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem;">
+                            <i class="fa-solid fa-gamepad"></i> Games Portal
+                        </span>
+                        <span style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem;">
+                            <i class="fa-solid fa-newspaper"></i> News Sources
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="sidebar">
+            <!-- Climate Control -->
+            <div class="sidebar-section">
+                <h4>Climate</h4>
+                <div class="climate-display">
+                    <div class="temp-value" id="tempDisplay">72°</div>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 5px;">Driver Side</p>
+                </div>
+                <div class="temp-controls">
+                    <button class="temp-btn" onclick="adjustTemp(-1)">
+                        <i class="fa-solid fa-minus"></i>
+                    </button>
+                    <button class="temp-btn" onclick="adjustTemp(1)">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Weather Widget -->
+            <div class="sidebar-section" id="weatherWidget">
+                <h4>Outside Weather</h4>
+                <div style="text-align: center;">
+                    <div style="font-size: 2.5rem; color: var(--accent); margin: 10px 0;" id="outsideTemp">--°</div>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 10px;" id="weatherDesc">Loading...</p>
+                    <div style="display: flex; justify-content: space-around; font-size: 0.75rem; color: var(--text-dim);">
+                        <div>
+                            <i class="fa-solid fa-droplet"></i>
+                            <span id="humidity">--%</span>
+                        </div>
+                        <div>
+                            <i class="fa-solid fa-wind"></i>
+                            <span id="windSpeed">-- mph</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trip Info -->
+            <div class="sidebar-section">
+                <h4>Trip Info</h4>
+                <div class="trip-stats">
+                    <div class="stat-box">
+                        <span class="value" id="miles">142</span>
+                        <span class="label">Miles</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="value" id="duration">2.4h</span>
+                        <span class="label">Duration</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="value" id="batteryPercent">68%</span>
+                        <span class="label">Battery</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="value" id="avgSpeed">59</span>
+                        <span class="label">Avg Speed</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="sidebar-section">
+                <h4>Quick Actions</h4>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                        <i class="fa-solid fa-phone"></i>
+                        <span>Phone</span>
+                    </button>
+                    <button style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                        <i class="fa-solid fa-map"></i>
+                        <span>Navigation</span>
+                    </button>
+                    <button style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                        <i class="fa-solid fa-microphone"></i>
+                        <span>Voice Command</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Now Streaming -->
+            <div class="sidebar-section" id="nowStreaming" style="display: none;">
+                <h4>Now Streaming</h4>
+                <div style="text-align: center;">
+                    <div style="width: 100%; height: 120px; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%); border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-film" style="font-size: 3rem; color: white;"></i>
+                    </div>
+                    <h4 id="streamingTitle" style="margin-bottom: 5px;">Content Title</h4>
+                    <p id="streamingSource" style="font-size: 0.8rem; color: var(--text-dim);">VazeerFlex</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-btn active" onclick="switchView('home')">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </button>
+        <button class="nav-btn" onclick="switchView('movies')">
+            <i class="fa-solid fa-film"></i>
+            <span>Movies</span>
+        </button>
+        <button class="nav-btn" onclick="switchView('music')">
+            <i class="fa-solid fa-music"></i>
+            <span>Music</span>
+        </button>
+        <button class="nav-btn" onclick="switchView('games')">
+            <i class="fa-solid fa-gamepad"></i>
+            <span>Games</span>
+        </button>
+        <button class="nav-btn" onclick="switchView('news')">
+            <i class="fa-solid fa-newspaper"></i>
+            <span>News</span>
+        </button>
+        <button class="nav-btn" onclick="switchView('settings')">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+        </button>
+    </div>
+</div>
+
+<script>
+// ============================================
+// REAL API INTEGRATION - ACTIVE
+// ============================================
+// Make sure api-config.js has your API keys!
+
+// Update time
+function updateTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    document.getElementById('time').textContent = timeStr;
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+// ============================================
+// 1. REAL WEATHER DATA (OpenWeatherMap API)
+// ============================================
+async function getRealWeather() {
+    try {
+        // Check if API key is configured
+        if (!API_CONFIG || API_CONFIG.WEATHER_API_KEY === 'PASTE_YOUR_WEATHER_API_KEY_HERE') {
+            console.log('⚠️ Weather API key not configured. Edit api-config.js file.');
+            return;
+        }
+
+        const API_KEY = API_CONFIG.WEATHER_API_KEY;
+        let url;
+
+        // Use GPS location or city name
+        if (API_CONFIG.WEATHER_CITY === 'auto') {
+            // Get current position
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=imperial`;
+                await fetchWeatherData(url);
+            });
+        } else {
+            // Use city name from config
+            const city = API_CONFIG.WEATHER_CITY;
+            url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=imperial`;
+            await fetchWeatherData(url);
+        }
+
+    } catch(error) {
+        console.log('Weather API error:', error);
+        document.getElementById('weatherDesc').textContent = 'Weather unavailable';
+    }
+}
+
+async function fetchWeatherData(url) {
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.cod === 200) {
+        // Update weather display
+        const temp = Math.round(data.main.temp);
+        const description = data.weather[0].description;
+        const humidity = data.main.humidity;
+        const windSpeed = Math.round(data.wind.speed);
+        
+        document.getElementById('outsideTemp').textContent = temp + '°F';
+        document.getElementById('weatherDesc').textContent = 
+            description.charAt(0).toUpperCase() + description.slice(1);
+        document.getElementById('humidity').textContent = humidity + '%';
+        document.getElementById('windSpeed').textContent = windSpeed + ' mph';
+        
+        console.log('✅ Weather updated:', data.name, temp + '°F');
+    } else {
+        throw new Error('Weather API returned error');
+    }
+}
+
+// Get weather immediately and refresh every 10 minutes
+getRealWeather();
+setInterval(getRealWeather, 600000);
+
+// ============================================
+// 2. REAL GPS SPEED
+// ============================================
+function getRealGPSSpeed() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition(
+            (position) => {
+                // Speed is in meters/second, convert to mph
+                const speedMPS = position.coords.speed || 0;
+                const speedMPH = Math.round(speedMPS * 2.237);
+                
+                if (speedMPH > 0) {
+                    document.getElementById('speed').textContent = speedMPH + ' mph';
+                    document.getElementById('avgSpeed').textContent = speedMPH;
+                }
+            },
+            (error) => {
+                console.log('GPS error:', error);
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+        console.log('✅ GPS tracking started');
+    } else {
+        console.log('⚠️ Geolocation not available');
+    }
+}
+
+// Activate GPS speed tracking
+getRealGPSSpeed();
+
+// ============================================
+// 3. GOOGLE MAPS NAVIGATION API
+// ============================================
+let currentNavigation = null;
+
+async function setDestination() {
+    try {
+        // Check if API key is configured
+        if (!API_CONFIG || API_CONFIG.GOOGLE_MAPS_API_KEY === 'PASTE_YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+            alert('⚠️ Google Maps API key not configured.\n\nPlease edit api-config.js and add your API key.');
+            return;
+        }
+
+        // Prompt for destination
+        const destination = prompt('Enter destination address:', 'Times Square, New York');
+        if (!destination) return;
+
+        // Get current position
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const origin = `${position.coords.latitude},${position.coords.longitude}`;
+            await getDirections(origin, destination);
+        }, (error) => {
+            alert('Unable to get your location. Please enable GPS.');
+        });
+
+    } catch(error) {
+        console.log('Navigation error:', error);
+        alert('Navigation error. Check console for details.');
+    }
+}
+
+async function getDirections(origin, destination) {
+    const API_KEY = API_CONFIG.GOOGLE_MAPS_API_KEY;
+    
+    // Use CORS proxy for client-side requests
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${encodeURIComponent(destination)}&key=${API_KEY}`;
+    
+    try {
+        // Note: Direct API calls from browser may have CORS issues
+        // For production, call this from your backend server
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.status === 'OK') {
+            const route = data.routes[0];
+            const leg = route.legs[0];
+            
+            // Store navigation data
+            currentNavigation = {
+                steps: leg.steps,
+                currentStep: 0,
+                destination: leg.end_address
+            };
+            
+            // Update display with first step
+            updateNavigationDisplay();
+            
+            console.log('✅ Navigation started to:', destination);
+        } else {
+            throw new Error('Directions API error: ' + data.status);
+        }
+    } catch(error) {
+        console.log('Maps API error:', error);
+        
+        // Fallback: Show basic navigation
+        document.getElementById('navInstruction').textContent = `Navigate to ${destination}`;
+        document.getElementById('navDistance').textContent = 'Calculating route...';
+        alert('Note: For full navigation, this needs to run on a server due to CORS restrictions.\n\nAlternative: Use the Maps API from your backend.');
+    }
+}
+
+function updateNavigationDisplay() {
+    if (!currentNavigation) return;
+    
+    const step = currentNavigation.steps[currentNavigation.currentStep];
+    
+    // Update instruction
+    const instruction = step.html_instructions.replace(/<[^>]*>/g, ''); // Remove HTML tags
+    document.getElementById('navInstruction').textContent = instruction;
+    document.getElementById('navDistance').textContent = step.distance.text;
+    
+    // Update icon based on maneuver
+    const iconMap = {
+        'turn-right': 'fa-arrow-right',
+        'turn-left': 'fa-arrow-left',
+        'straight': 'fa-arrow-up',
+        'merge': 'fa-code-merge',
+        'roundabout': 'fa-circle-dot'
+    };
+    
+    const maneuver = step.maneuver || 'straight';
+    const iconClass = iconMap[maneuver] || 'fa-location-arrow';
+    document.getElementById('navIcon').innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+    
+    // Update ETA and remaining distance
+    const leg = currentNavigation.steps.reduce((acc, s) => ({
+        duration: acc.duration + s.duration.value,
+        distance: acc.distance + s.distance.value
+    }), { duration: 0, distance: 0 });
+    
+    const etaMinutes = Math.round(leg.duration / 60);
+    const remainingMiles = (leg.distance / 1609.34).toFixed(1);
+    
+    document.getElementById('navETA').textContent = `ETA: ${etaMinutes} min`;
+    document.getElementById('navRemaining').textContent = `${remainingMiles} mi remaining`;
+}
+
+// ============================================
+// 4. ALTERNATIVE: EMBEDDED GOOGLE MAPS
+// ============================================
+function openMapsInIframe(destination) {
+    // This works without API key!
+    const mapsUrl = `https://www.google.com/maps/embed/v1/directions?key=${API_CONFIG.GOOGLE_MAPS_API_KEY}&origin=current+location&destination=${encodeURIComponent(destination)}&mode=driving`;
+    
+    // You can embed this in your interface
+    console.log('Maps URL:', mapsUrl);
+}
+
+// ============================================
+// BATTERY TRACKING (Phone battery as fallback)
+// ============================================
+if ('getBattery' in navigator) {
+    navigator.getBattery().then(battery => {
+        const updateBattery = () => {
+            const level = Math.floor(battery.level * 100);
+            // Only update if no real car data
+            if (document.getElementById('battery').textContent.includes('%')) {
+                document.getElementById('battery').textContent = level + '%';
+                document.getElementById('batteryPercent').textContent = level + '%';
+            }
+        };
+        
+        updateBattery();
+        battery.addEventListener('levelchange', updateBattery);
+    });
+}
+
+// ============================================
+// Fallback: Update trip data with GPS
+// ============================================
+let tripStartTime = new Date();
+let tripDistance = 0;
+
+function updateTripData() {
+    const duration = (new Date() - tripStartTime) / (1000 * 60 * 60);
+    const hours = Math.floor(duration);
+    const minutes = Math.round((duration - hours) * 60);
+    
+    document.getElementById('duration').textContent = 
+        hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+setInterval(updateTripData, 60000); // Update every minute
+
+console.log('====================================');
+console.log('🚗 Car Entertainment System Ready!');
+console.log('====================================');
+console.log('✅ Weather API: Checking...');
+console.log('✅ GPS Speed: Active');
+console.log('✅ Navigation: Ready');
+console.log('');
+console.log('⚠️ Make sure to configure api-config.js with your API keys!');
+console.log('====================================');
+
+// ============================================
+// GAMES & NEWS FUNCTIONS
+// ============================================
+
+function openGame(url) {
+    window.open(url, '_blank');
+}
+
+function loadEmbeddedGame(gameType) {
+    const container = document.getElementById('embedded-game-container');
+    const frame = document.getElementById('game-frame');
+    const title = document.getElementById('game-title');
+    
+    const games = {
+        'chess': {
+            url: 'https://www.chess.com/play/computer',
+            title: '♟️ Chess'
+        },
+        '2048': {
+            url: 'https://play2048.co/',
+            title: '🎮 2048'
+        },
+        'tetris': {
+            url: 'https://tetris.com/play-tetris',
+            title: '🧱 Tetris'
+        }
+    };
+    
+    if (games[gameType]) {
+        title.textContent = games[gameType].title;
+        frame.src = games[gameType].url;
+        container.style.display = 'block';
+        
+        // Scroll to game
+        container.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function closeEmbeddedGame() {
+    const container = document.getElementById('embedded-game-container');
+    const frame = document.getElementById('game-frame');
+    
+    frame.src = '';
+    container.style.display = 'none';
+}
+
+
+// View switching
+function switchView(viewName) {
+    // Update views
+    document.querySelectorAll('.view').forEach(view => {
+        view.classList.remove('active');
+    });
+    document.getElementById('view-' + viewName).classList.add('active');
+    
+    // Update nav buttons
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+
+    // Show/hide streaming info
+    const nowStreaming = document.getElementById('nowStreaming');
+    if (viewName === 'movies' || viewName === 'music' || viewName === 'games' || viewName === 'news') {
+        nowStreaming.style.display = 'block';
+        const sourceMap = {
+            'movies': 'VazeerFlex',
+            'music': 'Music App',
+            'games': 'MSN Games',
+            'news': 'MSN News'
+        };
+        document.getElementById('streamingSource').textContent = sourceMap[viewName];
+    } else {
+        nowStreaming.style.display = 'none';
+    }
+}
+
+// Temperature control
+let currentTemp = 72;
+function adjustTemp(delta) {
+    currentTemp = Math.max(60, Math.min(85, currentTemp + delta));
+    document.getElementById('tempDisplay').textContent = currentTemp + '°';
+}
+
+// Iframe controls
+function hideLoading(iframe) {
+    const loading = iframe.previousElementSibling;
+    if (loading && loading.classList.contains('loading')) {
+        loading.style.display = 'none';
+    }
+}
+
+function reloadIframe(iframeId) {
+    const iframe = document.getElementById(iframeId);
+    const loading = iframe.previousElementSibling;
+    if (loading) loading.style.display = 'block';
+    iframe.src = iframe.src;
+}
+
+function toggleFullscreen(iframeId) {
+    const container = document.getElementById(iframeId).parentElement.parentElement;
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+            console.log('Fullscreen error:', err);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function openExternal(url) {
+    window.open(url, '_blank');
+}
+
+// Add hover effects to buttons
+document.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('mouseenter', function() {
+        if (!this.classList.contains('toggle')) {
+            this.style.transform = 'scale(1.05)';
+        }
+    });
+    btn.addEventListener('mouseleave', function() {
+        if (!this.classList.contains('toggle')) {
+            this.style.transform = 'scale(1)';
+        }
+    });
+});
+
+// Prevent iframe from capturing all touch events on mobile
+document.querySelectorAll('iframe').forEach(iframe => {
+    iframe.addEventListener('load', function() {
+        console.log('Iframe loaded:', iframe.id);
+    });
+});
+</script>
+
+</body>
+</html>
