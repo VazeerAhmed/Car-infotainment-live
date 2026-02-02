@@ -878,7 +878,7 @@
                 </div>
             </div>
 
-            <!-- MUSIC VIEW (Music App) -->
+            <!-- MUSIC VIEW (Music App + Freefy) -->
             <div class="view" id="view-music">
                 <div class="iframe-header">
                     <div style="display: flex; align-items: center; gap: 15px;">
@@ -887,17 +887,24 @@
                         </button>
                         <div>
                             <h3 style="font-size: 1.2rem;">Music Player</h3>
-                            <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 3px;">Your personal music collection</p>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 3px;">
+                                <i class="fa-solid fa-music" style="margin-right: 5px;"></i>
+                                <span id="currentMusicService">Your Library</span>
+                            </p>
                         </div>
                     </div>
                     <div class="iframe-controls">
+                        <button class="iframe-btn" onclick="switchMusicService()" title="Switch Service" style="padding: 8px 15px; width: auto; gap: 5px;">
+                            <i class="fa-solid fa-repeat"></i>
+                            <span style="font-size: 0.8rem;">Switch</span>
+                        </button>
                         <button class="iframe-btn" onclick="reloadIframe('music-iframe')" title="Reload">
                             <i class="fa-solid fa-rotate-right"></i>
                         </button>
                         <button class="iframe-btn" onclick="toggleFullscreen('music-iframe')" title="Fullscreen">
                             <i class="fa-solid fa-expand"></i>
                         </button>
-                        <button class="iframe-btn" onclick="openExternal('https://my-music-app-okqt.onrender.com/')" title="Open in browser">
+                        <button class="iframe-btn" onclick="openExternal(currentMusicUrl)" title="Open in browser">
                             <i class="fa-solid fa-external-link"></i>
                         </button>
                     </div>
@@ -2330,6 +2337,50 @@ function toggleFullscreen(iframeId) {
 
 function openExternal(url) {
     window.open(url, '_blank');
+}
+
+// ============================================
+// MUSIC SERVICE SWITCHER
+// ============================================
+let currentMusicUrl = 'https://my-music-app-okqt.onrender.com/';
+let musicServices = [
+    {
+        name: 'Your Library',
+        url: 'https://my-music-app-okqt.onrender.com/',
+        icon: 'fa-music'
+    },
+    {
+        name: 'Freefy - New Releases',
+        url: 'https://freefy.app/new-releases',
+        icon: 'fa-fire'
+    }
+];
+let currentMusicIndex = 0;
+
+function switchMusicService() {
+    // Switch to next service
+    currentMusicIndex = (currentMusicIndex + 1) % musicServices.length;
+    const service = musicServices[currentMusicIndex];
+    
+    // Update iframe
+    const iframe = document.getElementById('music-iframe');
+    iframe.src = service.url;
+    
+    // Update current URL
+    currentMusicUrl = service.url;
+    
+    // Update service name display
+    const serviceDisplay = document.getElementById('currentMusicService');
+    if (serviceDisplay) {
+        serviceDisplay.innerHTML = `<i class="fa-solid ${service.icon}"></i> ${service.name}`;
+    }
+    
+    // Show loading
+    const container = iframe.parentElement;
+    const loading = container.querySelector('.loading');
+    if (loading) loading.style.display = 'flex';
+    
+    console.log(`✅ Switched to: ${service.name}`);
 }
 
 // Add hover effects to buttons
