@@ -2,14 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AutoVerse | In-Car Entertainment System</title>
+    
+    <!-- Favicon - AutoVerse Logo -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%2300d9ff'/><stop offset='100%25' style='stop-color:%237c3aed'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='20'/><text x='50' y='72' font-size='65' text-anchor='middle' fill='white' font-family='Arial, sans-serif' font-weight='bold'>A</text></svg>">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-    <script src="api-config.js"></script>
+    <script>
+        // API Configuration (inline to avoid external file issues on GitHub Pages)
+        const API_CONFIG = {
+            WEATHER_API_KEY: '90c270e247e81a5e90af75efac65d4f7',
+            WEATHER_CITY: 'auto',
+            GOOGLE_MAPS_API_KEY: '',
+            FAVORITE_DESTINATIONS: []
+        };
+    </script>
     <style>
         :root {
             --bg: #000000;
@@ -470,6 +482,52 @@
         .nav-btn span {
             font-size: 0.75rem;
             font-weight: 500;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .status-bar {
+                padding: 0 15px;
+                grid-template-rows: 70px 1fr 80px;
+            }
+
+            .status-left {
+                gap: 15px;
+            }
+
+            .vehicle-info h2 {
+                font-size: 1.2rem;
+            }
+
+            .stat-item {
+                font-size: 0.8rem;
+            }
+
+            .bottom-nav {
+                padding: 0 10px;
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+            }
+
+            .nav-btn {
+                padding: 10px 5px;
+            }
+
+            .nav-btn i {
+                font-size: 1.5rem;
+            }
+
+            .nav-btn span {
+                font-size: 0.65rem;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Games Grid */
@@ -1533,7 +1591,19 @@ function resetTrip() {
 // Toggle GPS tracking
 function toggleGPS(element) {
     element.classList.toggle('active');
-    tripData.isTracking = element.classList.contains('active');
+    const isActive = element.classList.contains('active');
+    tripData.isTracking = isActive;
+    
+    if (isActive && !locationPermissionGranted) {
+        // Re-request location permission
+        if (locationWatchId) {
+            navigator.geolocation.clearWatch(locationWatchId);
+            locationWatchId = null;
+        }
+        trackUserLocation();
+        alert('Please allow location access when prompted by your browser.');
+    }
+    
     console.log('GPS tracking:', tripData.isTracking ? 'enabled' : 'disabled');
 }
 
@@ -1683,6 +1753,7 @@ function trackUserLocation() {
         // Only request once
         if (locationWatchId) return;
         
+        // Force permission request immediately
         locationWatchId = navigator.geolocation.watchPosition(
             (position) => {
                 locationPermissionGranted = true;
@@ -1693,31 +1764,45 @@ function trackUserLocation() {
                 
                 // Update location displays
                 const locationText = `${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`;
-                document.getElementById('currentLocation').textContent = locationText;
+                const currentLocEl = document.getElementById('currentLocation');
+                if (currentLocEl) currentLocEl.textContent = locationText;
                 
                 const mapSourceEl = document.getElementById('mapSourceLocation');
-                if (mapSourceEl) {
-                    mapSourceEl.textContent = locationText;
-                }
+                if (mapSourceEl) mapSourceEl.textContent = locationText;
                 
                 // Update map if it exists
                 updateMapLocation();
+                
+                console.log('✅ Location permission granted');
             },
             (error) => {
                 console.log('Location tracking error:', error);
-                document.getElementById('currentLocation').textContent = 'Location unavailable';
+                const currentLocEl = document.getElementById('currentLocation');
+                if (currentLocEl) currentLocEl.textContent = 'Enable location in browser';
                 
                 const mapSourceEl = document.getElementById('mapSourceLocation');
-                if (mapSourceEl) {
-                    mapSourceEl.textContent = 'Enable GPS';
+                if (mapSourceEl) mapSourceEl.textContent = 'Enable GPS';
+                
+                // Show alert for GitHub Pages
+                if (window.location.protocol === 'https:') {
+                    console.warn('⚠️ Please allow location access in your browser settings');
                 }
             },
             { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
         );
+    } else {
+        console.error('❌ Geolocation not supported');
+        alert('Your browser does not support geolocation. Please use Chrome, Firefox, or Safari.');
     }
 }
 
-// Call only once
+// Request location permission on page load
+window.addEventListener('load', function() {
+    // Small delay to ensure DOM is ready
+    setTimeout(trackUserLocation, 500);
+});
+
+// Also call immediately
 trackUserLocation();
 
 // Update map with user location
