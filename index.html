@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoVerse | In-Car Entertainment System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <script src="api-config.js"></script>
     <style>
         :root {
@@ -633,6 +637,46 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
         }
+
+        /* Leaflet Routing Machine Styling */
+        .leaflet-routing-container {
+            background: rgba(10, 10, 10, 0.95) !important;
+            color: white !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+            padding: 15px !important;
+        }
+
+        .leaflet-routing-alt {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: white !important;
+            padding: 10px !important;
+            border-radius: 8px !important;
+            margin: 5px 0 !important;
+        }
+
+        .leaflet-routing-alt h3 {
+            color: var(--accent) !important;
+            font-size: 1rem !important;
+        }
+
+        .leaflet-routing-alt table {
+            color: white !important;
+        }
+
+        .leaflet-routing-alt td {
+            color: white !important;
+            padding: 8px !important;
+        }
+
+        .leaflet-routing-geocoder {
+            display: none !important;
+        }
+
+        .leaflet-routing-collapse-btn {
+            background: var(--accent) !important;
+            color: white !important;
+        }
     </style>
 </head>
 <body>
@@ -671,50 +715,59 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="content-area">
-            <!-- HOME VIEW -->
+            <!--HOME VIEW -->
             <div class="view active" id="view-home">
-                <h2 style="margin-bottom: 25px; font-size: 1.8rem;">Entertainment Hub</h2>
+                <h2 style="margin-bottom: 25px; font-size: 1.6rem;">AutoVerse</h2>
                 
-                <div class="entertainment-grid">
+                <!--6 Apps - Clean & Simple -->
+                <div class="entertainment-grid" style="margin-bottom: 30px;">
                     <div class="ent-card" onclick="switchView('movies')">
-                        <span class="live-badge">LIVE</span>
                         <i class="fa-solid fa-film"></i>
-                        <h3>VazeerFlex</h3>
-                        <p>Movies & TV Shows</p>
+                        <h3>Movies</h3>
                     </div>
                     
                     <div class="ent-card" onclick="switchView('music')">
-                        <span class="live-badge">LIVE</span>
                         <i class="fa-solid fa-music"></i>
-                        <h3>Music App</h3>
-                        <p>Your Library</p>
+                        <h3>Music</h3>
                     </div>
                     
                     <div class="ent-card" onclick="switchView('games')">
                         <i class="fa-solid fa-gamepad"></i>
                         <h3>Games</h3>
-                        <p>Free Online Games</p>
+                    </div>
+                    
+                    <div class="ent-card" onclick="switchView('map')">
+                        <i class="fa-solid fa-map"></i>
+                        <h3>Map</h3>
                     </div>
                     
                     <div class="ent-card" onclick="switchView('news')">
                         <i class="fa-solid fa-newspaper"></i>
                         <h3>News</h3>
-                        <p>Latest Headlines</p>
                     </div>
                     
-                    <div class="ent-card">
-                        <i class="fa-solid fa-podcast"></i>
-                        <h3>Podcasts</h3>
-                        <p>Your subscriptions</p>
-                    </div>
-                    
-                    <div class="ent-card">
-                        <i class="fa-solid fa-camera"></i>
-                        <h3>Camera View</h3>
-                        <p>360° View</p>
+                    <div class="ent-card" onclick="switchView('settings')">
+                        <i class="fa-solid fa-gear"></i>
+                        <h3>Settings</h3>
                     </div>
                 </div>
 
+                <!-- Weather & Speed - Side by Side -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                    <div class="card" style="padding: 20px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Weather</div>
+                        <div style="font-size: 2.2rem; font-weight: 600; color: var(--accent);" id="mobileOutsideTemp">--°</div>
+                        <div style="font-size: 0.85rem; margin-top: 5px;" id="mobileWeatherLocation">Loading...</div>
+                    </div>
+                    
+                    <div class="card" style="padding: 20px; text-align: center;">
+                        <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Speed</div>
+                        <div style="font-size: 2.2rem; font-weight: 600; color: var(--accent);"><span id="mobileCurrentSpeed">0</span><span style="font-size: 1rem; color: var(--text-dim);"> mph</span></div>
+                        <div style="font-size: 0.85rem; margin-top: 5px;"><span id="mobileTripDistance">0.0</span> miles</div>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
                 <div class="nav-preview">
                     <div class="nav-direction">
                         <div class="nav-icon" id="navIcon">
@@ -722,15 +775,17 @@
                         </div>
                         <div class="nav-text">
                             <h4 id="navInstruction">No active navigation</h4>
-                            <p id="navDistance">Set destination to begin</p>
+                            <p id="navDistance">Tap to start</p>
                         </div>
                     </div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-dim);">
-                        <span id="navETA">ETA: --</span>
-                        <span id="navRemaining">-- remaining</span>
+                    
+                    <div id="homeDirectionsList" style="display: none; margin: 15px 0; max-height: 180px; overflow-y: auto; background: var(--glass); border-radius: 12px; padding: 10px;">
+                        <div style="font-size: 0.7rem; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">Directions</div>
+                        <div id="directionsContent"></div>
                     </div>
-                    <button onclick="setDestination()" style="margin-top: 15px; width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 12px; color: white; cursor: pointer; font-weight: 600;">
-                        <i class="fa-solid fa-route"></i> Set Destination
+                    
+                    <button onclick="switchView('map')" style="width: 100%; padding: 14px; margin-top: 15px; background: var(--accent); border: none; border-radius: 12px; color: white; cursor: pointer; font-weight: 600; font-size: 0.95rem;">
+                        <i class="fa-solid fa-route"></i> Navigate
                     </button>
                 </div>
             </div>
@@ -761,7 +816,7 @@
                 </div>
                 <div class="iframe-container">
                     <div class="loading"><i class="fa-solid fa-spinner"></i></div>
-                    <iframe id="movies-iframe" src="https://vazeerflex.onrender.com/" onload="hideLoading(this)"></iframe>
+                    <iframe id="movies-iframe" src="https://vazeerflex.onrender.com/" onload="hideLoading(this)" allow="geolocation; autoplay; encrypted-media; fullscreen"></iframe>
                 </div>
             </div>
 
@@ -791,7 +846,7 @@
                 </div>
                 <div class="iframe-container">
                     <div class="loading"><i class="fa-solid fa-spinner"></i></div>
-                    <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)"></iframe>
+                    <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)" allow="geolocation; autoplay; encrypted-media; fullscreen"></iframe>
                 </div>
             </div>
 
@@ -947,15 +1002,101 @@
                 </div>
             </div>
 
-            <!-- SETTINGS VIEW -->
+            <!-- MAP VIEW -->
+            <div class="view" id="view-map">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="font-size: 1.8rem;">Navigation</h2>
+                    <button class="iframe-btn" onclick="switchView('home')" title="Back to Home" style="width: 45px; height: 45px; font-size: 1.2rem;">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                </div>
+
+                <div style="background: var(--glass); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">Set Destination</h3>
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px;">
+                        <input type="text" id="destinationInput" placeholder="Enter destination (e.g., Paris, Eiffel Tower)" style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; font-size: 1rem;">
+                        <button onclick="startNavigation()" style="padding: 15px 30px; background: var(--accent); border: none; border-radius: 12px; color: white; cursor: pointer; font-weight: 600;">
+                            <i class="fa-solid fa-route"></i> Navigate
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="document.getElementById('destinationInput').value='Paris, France'; startNavigation()" style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fa-solid fa-landmark"></i> Paris
+                        </button>
+                        <button onclick="document.getElementById('destinationInput').value='London, UK'; startNavigation()" style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fa-solid fa-tower"></i> London
+                        </button>
+                        <button onclick="document.getElementById('destinationInput').value='New York, USA'; startNavigation()" style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fa-solid fa-building"></i> New York
+                        </button>
+                        <button onclick="findNearby('restaurant')" style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fa-solid fa-utensils"></i> Restaurant
+                        </button>
+                        <button onclick="findNearby('gas station')" style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fa-solid fa-gas-pump"></i> Gas Station
+                        </button>
+                        <button onclick="findNearby('hospital')" style="padding: 8px 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer; font-size: 0.85rem;">
+                            <i class="fa-solid fa-hospital"></i> Hospital
+                        </button>
+                    </div>
+                </div>
+
+                <div style="background: var(--glass); border: 1px solid var(--border); border-radius: 20px; padding: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">FROM</div>
+                            <div id="mapSourceLocation" style="font-size: 0.9rem;">Getting your location...</div>
+                        </div>
+                        <div style="font-size: 2rem; color: var(--accent);">→</div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">TO</div>
+                            <div id="mapDestinationLocation" style="font-size: 0.9rem;">Set destination above</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="map-container" style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; height: calc(100vh - 500px); min-height: 400px; position: relative;">
+                    <div id="map-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 1000; background: var(--card-bg); padding: 30px; border-radius: 20px;">
+                        <i class="fa-solid fa-map-location-dot" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
+                        <p style="color: var(--text-dim);">Set a destination to view route</p>
+                    </div>
+                    <div id="map" style="width: 100%; height: 100%; border-radius: 20px;"></div>
+                </div>
+
+                <div style="margin-top: 20px; padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <button onclick="zoomMap('in')" style="padding: 12px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer;">
+                            <i class="fa-solid fa-plus"></i> Zoom In
+                        </button>
+                        <button onclick="zoomMap('out')" style="padding: 12px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer;">
+                            <i class="fa-solid fa-minus"></i> Zoom Out
+                        </button>
+                        <button onclick="centerMap()" style="padding: 12px; background: var(--glass); border: 1px solid var(--border); border-radius: 10px; color: white; cursor: pointer;">
+                            <i class="fa-solid fa-location-crosshairs"></i> Center
+                        </button>
+                    </div>
+                    <button onclick="toggleMapFullscreen()" style="margin-top: 10px; width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 10px; color: white; cursor: pointer; font-weight: 600;">
+                        <i class="fa-solid fa-expand"></i> Fullscreen Map
+                    </button>
+                </div>
+            </div>
             <div class="view" id="view-settings">
                 <h2 style="margin-bottom: 25px; font-size: 1.8rem;">Settings</h2>
                 
                 <div class="settings-list">
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h4>Auto-play Next Track</h4>
-                            <p>Automatically play next song</p>
+                            <h4>GPS Tracking</h4>
+                            <p>Real-time speed and location</p>
+                        </div>
+                        <div class="toggle active" onclick="toggleGPS(this)"></div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <h4>Auto Weather Updates</h4>
+                            <p>Refresh every 10 minutes</p>
                         </div>
                         <div class="toggle active" onclick="this.classList.toggle('active')"></div>
                     </div>
@@ -963,41 +1104,47 @@
                     <div class="setting-item">
                         <div class="setting-info">
                             <h4>Safety Mode</h4>
-                            <p>Restrict video when driving</p>
+                            <p>Limit features while driving</p>
                         </div>
                         <div class="toggle active" onclick="this.classList.toggle('active')"></div>
                     </div>
                     
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h4>Bluetooth Audio</h4>
-                            <p>Connected to phone</p>
+                            <h4>Dark Mode</h4>
+                            <p>Always enabled for night driving</p>
                         </div>
-                        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
-                    </div>
-                    
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>Download over WiFi only</h4>
-                            <p>Save cellular data</p>
-                        </div>
-                        <div class="toggle" onclick="this.classList.toggle('active')"></div>
-                    </div>
-                    
-                    <div class="setting-item">
-                        <div class="setting-info">
-                            <h4>HD Streaming</h4>
-                            <p>Higher quality video</p>
-                        </div>
-                        <div class="toggle active" onclick="this.classList.toggle('active')"></div>
+                        <div class="toggle active" style="opacity: 0.5; pointer-events: none;"></div>
                     </div>
 
                     <div class="setting-item">
                         <div class="setting-info">
-                            <h4>Preload Content</h4>
-                            <p>Cache for offline playback</p>
+                            <h4>Location Services</h4>
+                            <p id="locationStatus">Checking...</p>
                         </div>
-                        <div class="toggle" onclick="this.classList.toggle('active')"></div>
+                        <span id="locationIcon"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 20px; font-size: 1.3rem;">System Information</h3>
+                <div style="padding: 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 16px;">
+                    <div style="display: flex; flex-direction: column; gap: 15px; font-size: 0.9rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Weather API</span>
+                            <span id="weatherStatus" style="color: var(--success);"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Connected</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">GPS Status</span>
+                            <span id="gpsStatus" style="color: var(--success);"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Browser</span>
+                            <span id="browserInfo">Chrome</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Screen</span>
+                            <span id="screenInfo">--</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1044,80 +1191,69 @@
 
         <!-- Right Sidebar -->
         <div class="sidebar">
-            <!-- Climate Control -->
-            <div class="sidebar-section">
-                <h4>Climate</h4>
-                <div class="climate-display">
-                    <div class="temp-value" id="tempDisplay">72°</div>
-                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 5px;">Driver Side</p>
-                </div>
-                <div class="temp-controls">
-                    <button class="temp-btn" onclick="adjustTemp(-1)">
-                        <i class="fa-solid fa-minus"></i>
-                    </button>
-                    <button class="temp-btn" onclick="adjustTemp(1)">
-                        <i class="fa-solid fa-plus"></i>
-                    </button>
-                </div>
-            </div>
-
             <!-- Live Weather Widget -->
             <div class="sidebar-section" id="weatherWidget">
-                <h4>Outside Weather</h4>
+                <h4>Current Weather</h4>
                 <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; color: var(--accent); margin: 10px 0;" id="outsideTemp">--°</div>
-                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 10px;" id="weatherDesc">Loading...</p>
-                    <div style="display: flex; justify-content: space-around; font-size: 0.75rem; color: var(--text-dim);">
-                        <div>
-                            <i class="fa-solid fa-droplet"></i>
-                            <span id="humidity">--%</span>
+                    <div style="font-size: 3rem; color: var(--accent); margin: 10px 0;" id="outsideTemp">--°</div>
+                    <p style="font-size: 0.95rem; font-weight: 500; margin-bottom: 5px;" id="weatherLocation">Loading...</p>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 15px;" id="weatherDesc">Fetching weather...</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem; color: var(--text-dim);">
+                        <div style="background: var(--glass); padding: 10px; border-radius: 10px;">
+                            <i class="fa-solid fa-droplet" style="color: var(--accent);"></i>
+                            <div id="humidity" style="margin-top: 5px; font-weight: 600; color: white;">--%</div>
+                            <div style="font-size: 0.7rem;">Humidity</div>
                         </div>
-                        <div>
-                            <i class="fa-solid fa-wind"></i>
-                            <span id="windSpeed">-- mph</span>
+                        <div style="background: var(--glass); padding: 10px; border-radius: 10px;">
+                            <i class="fa-solid fa-wind" style="color: var(--accent);"></i>
+                            <div id="windSpeed" style="margin-top: 5px; font-weight: 600; color: white;">--</div>
+                            <div style="font-size: 0.7rem;">Wind</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Trip Info -->
+            <!-- Trip Info with LIVE DATA -->
             <div class="sidebar-section">
-                <h4>Trip Info</h4>
+                <h4>Live Trip Data</h4>
                 <div class="trip-stats">
                     <div class="stat-box">
-                        <span class="value" id="miles">142</span>
+                        <span class="value" id="currentSpeed">0</span>
+                        <span class="label">mph</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="value" id="tripDistance">0.0</span>
                         <span class="label">Miles</span>
                     </div>
                     <div class="stat-box">
-                        <span class="value" id="duration">2.4h</span>
+                        <span class="value" id="tripDuration">0m</span>
                         <span class="label">Duration</span>
                     </div>
                     <div class="stat-box">
-                        <span class="value" id="batteryPercent">68%</span>
-                        <span class="label">Battery</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="value" id="avgSpeed">59</span>
+                        <span class="value" id="avgSpeed">0</span>
                         <span class="label">Avg Speed</span>
                     </div>
                 </div>
+                <button onclick="resetTrip()" style="margin-top: 15px; width: 100%; padding: 10px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; font-size: 0.85rem;">
+                    <i class="fa-solid fa-rotate-right"></i> Reset Trip
+                </button>
             </div>
 
             <!-- Quick Actions -->
             <div class="sidebar-section">
                 <h4>Quick Actions</h4>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <button style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                    <button onclick="window.location.href='tel:+1234567890'" style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
                         <i class="fa-solid fa-phone"></i>
-                        <span>Phone</span>
+                        <span>Emergency Call</span>
                     </button>
-                    <button style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                    <button onclick="switchView('map')" style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
                         <i class="fa-solid fa-map"></i>
                         <span>Navigation</span>
                     </button>
-                    <button style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
-                        <i class="fa-solid fa-microphone"></i>
-                        <span>Voice Command</span>
+                    <button onclick="shareLocation()" style="padding: 15px; background: var(--glass); border: 1px solid var(--border); border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.3s ease;">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Share Location</span>
                     </button>
                 </div>
             </div>
@@ -1150,13 +1286,13 @@
             <i class="fa-solid fa-music"></i>
             <span>Music</span>
         </button>
+        <button class="nav-btn" onclick="switchView('map')">
+            <i class="fa-solid fa-map"></i>
+            <span>Map</span>
+        </button>
         <button class="nav-btn" onclick="switchView('games')">
             <i class="fa-solid fa-gamepad"></i>
             <span>Games</span>
-        </button>
-        <button class="nav-btn" onclick="switchView('news')">
-            <i class="fa-solid fa-newspaper"></i>
-            <span>News</span>
         </button>
         <button class="nav-btn" onclick="switchView('settings')">
             <i class="fa-solid fa-gear"></i>
@@ -1169,7 +1305,6 @@
 // ============================================
 // REAL API INTEGRATION - ACTIVE
 // ============================================
-// Make sure api-config.js has your API keys!
 
 // Update time
 function updateTime() {
@@ -1181,61 +1316,76 @@ setInterval(updateTime, 1000);
 updateTime();
 
 // ============================================
-// 1. REAL WEATHER DATA (OpenWeatherMap API)
+// 1. REAL WEATHER DATA with your API key!
 // ============================================
 async function getRealWeather() {
     try {
-        // Check if API key is configured
-        if (!API_CONFIG || API_CONFIG.WEATHER_API_KEY === 'PASTE_YOUR_WEATHER_API_KEY_HERE') {
-            console.log('⚠️ Weather API key not configured. Edit api-config.js file.');
-            return;
-        }
+        const API_KEY = '90c270e247e81a5e90af75efac65d4f7'; // Your API key
 
-        const API_KEY = API_CONFIG.WEATHER_API_KEY;
-        let url;
-
-        // Use GPS location or city name
-        if (API_CONFIG.WEATHER_CITY === 'auto') {
-            // Get current position
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=imperial`;
-                await fetchWeatherData(url);
-            });
-        } else {
-            // Use city name from config
-            const city = API_CONFIG.WEATHER_CITY;
-            url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=imperial`;
-            await fetchWeatherData(url);
-        }
+        // Get current GPS position
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.cod === 200) {
+                // Update weather display (both sidebar and mobile)
+                const temp = Math.round(data.main.temp);
+                const description = data.weather[0].description;
+                const humidity = data.main.humidity;
+                const windSpeed = Math.round(data.wind.speed * 2.237); // Convert m/s to mph
+                const location = data.name;
+                const weatherMain = data.weather[0].main.toLowerCase();
+                
+                // Weather icon based on condition
+                let weatherIcon = 'fa-cloud';
+                if (weatherMain.includes('rain')) weatherIcon = 'fa-cloud-rain';
+                else if (weatherMain.includes('snow')) weatherIcon = 'fa-snowflake';
+                else if (weatherMain.includes('clear')) weatherIcon = 'fa-sun';
+                else if (weatherMain.includes('thunder')) weatherIcon = 'fa-cloud-bolt';
+                else if (weatherMain.includes('drizzle')) weatherIcon = 'fa-cloud-drizzle';
+                else if (weatherMain.includes('mist') || weatherMain.includes('fog')) weatherIcon = 'fa-smog';
+                
+                // Update sidebar weather
+                document.getElementById('outsideTemp').textContent = temp + '°C';
+                document.getElementById('weatherLocation').innerHTML = `<i class="fa-solid ${weatherIcon}" style="margin-right: 8px;"></i>${location}`;
+                document.getElementById('weatherDesc').textContent = 
+                    description.charAt(0).toUpperCase() + description.slice(1);
+                document.getElementById('humidity').textContent = humidity + '%';
+                document.getElementById('windSpeed').textContent = windSpeed + ' mph';
+                
+                // Update mobile weather widgets
+                const mobileTemp = document.getElementById('mobileOutsideTemp');
+                const mobileLocation = document.getElementById('mobileWeatherLocation');
+                const mobileDesc = document.getElementById('mobileWeatherDesc');
+                const mobileHumidity = document.getElementById('mobileHumidity');
+                const mobileWind = document.getElementById('mobileWindSpeed');
+                
+                if (mobileTemp) mobileTemp.textContent = temp + '°C';
+                if (mobileLocation) mobileLocation.innerHTML = `<i class="fa-solid ${weatherIcon}" style="margin-right: 8px;"></i>${location}`;
+                if (mobileDesc) mobileDesc.textContent = description.charAt(0).toUpperCase() + description.slice(1);
+                if (mobileHumidity) mobileHumidity.textContent = humidity + '%';
+                if (mobileWind) mobileWind.textContent = windSpeed + ' mph';
+                
+                // Update settings status
+                document.getElementById('weatherStatus').innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Connected';
+                document.getElementById('weatherStatus').style.color = 'var(--success)';
+                
+                console.log('✅ Weather updated:', location, temp + '°C');
+            }
+        }, (error) => {
+            console.log('GPS error for weather:', error);
+            document.getElementById('weatherDesc').textContent = 'Enable GPS for weather';
+        });
 
     } catch(error) {
         console.log('Weather API error:', error);
         document.getElementById('weatherDesc').textContent = 'Weather unavailable';
-    }
-}
-
-async function fetchWeatherData(url) {
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.cod === 200) {
-        // Update weather display
-        const temp = Math.round(data.main.temp);
-        const description = data.weather[0].description;
-        const humidity = data.main.humidity;
-        const windSpeed = Math.round(data.wind.speed);
-        
-        document.getElementById('outsideTemp').textContent = temp + '°F';
-        document.getElementById('weatherDesc').textContent = 
-            description.charAt(0).toUpperCase() + description.slice(1);
-        document.getElementById('humidity').textContent = humidity + '%';
-        document.getElementById('windSpeed').textContent = windSpeed + ' mph';
-        
-        console.log('✅ Weather updated:', data.name, temp + '°F');
-    } else {
-        throw new Error('Weather API returned error');
+        document.getElementById('weatherStatus').innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Error';
+        document.getElementById('weatherStatus').style.color = 'var(--danger)';
     }
 }
 
@@ -1244,198 +1394,730 @@ getRealWeather();
 setInterval(getRealWeather, 600000);
 
 // ============================================
-// 2. REAL GPS SPEED
+// 2. REAL GPS SPEED TRACKING
 // ============================================
+let tripData = {
+    startTime: new Date(),
+    totalDistance: 0,
+    lastPosition: null,
+    speeds: [],
+    isTracking: true
+};
+
 function getRealGPSSpeed() {
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(
             (position) => {
-                // Speed is in meters/second, convert to mph
+                if (!tripData.isTracking) return;
+                
+                // Get speed from GPS (meters per second)
                 const speedMPS = position.coords.speed || 0;
                 const speedMPH = Math.round(speedMPS * 2.237);
                 
-                if (speedMPH > 0) {
+                // Update current speed displays (both sidebar and mobile)
+                if (speedMPH >= 0) {
                     document.getElementById('speed').textContent = speedMPH + ' mph';
-                    document.getElementById('avgSpeed').textContent = speedMPH;
+                    document.getElementById('currentSpeed').textContent = speedMPH;
+                    
+                    // Update mobile version
+                    const mobileSpeed = document.getElementById('mobileCurrentSpeed');
+                    if (mobileSpeed) mobileSpeed.textContent = speedMPH;
+                    
+                    // Track for average
+                    if (speedMPH > 0) {
+                        tripData.speeds.push(speedMPH);
+                    }
                 }
+                
+                // Calculate distance traveled
+                if (tripData.lastPosition) {
+                    const distance = calculateDistance(
+                        tripData.lastPosition.latitude,
+                        tripData.lastPosition.longitude,
+                        position.coords.latitude,
+                        position.coords.longitude
+                    );
+                    tripData.totalDistance += distance;
+                    document.getElementById('tripDistance').textContent = tripData.totalDistance.toFixed(1);
+                }
+                
+                tripData.lastPosition = position.coords;
+                
+                // Calculate average speed
+                if (tripData.speeds.length > 0) {
+                    const avg = tripData.speeds.reduce((a, b) => a + b, 0) / tripData.speeds.length;
+                    const avgRounded = Math.round(avg);
+                    document.getElementById('avgSpeed').textContent = avgRounded;
+                    
+                    // Update mobile version
+                    const mobileAvg = document.getElementById('mobileAvgSpeed');
+                    if (mobileAvg) mobileAvg.textContent = avgRounded;
+                }
+                
+                // Update trip duration
+                updateTripDuration();
+                
+                // Update GPS status
+                document.getElementById('gpsStatus').innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active';
+                document.getElementById('gpsStatus').style.color = 'var(--success)';
             },
             (error) => {
                 console.log('GPS error:', error);
+                document.getElementById('speed').textContent = '0 mph';
+                document.getElementById('gpsStatus').innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Disabled';
+                document.getElementById('gpsStatus').style.color = 'var(--danger)';
             },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+            { 
+                enableHighAccuracy: true, 
+                maximumAge: 0, 
+                timeout: 5000 
+            }
         );
-        console.log('✅ GPS tracking started');
+        console.log('✅ GPS speed tracking started');
     } else {
         console.log('⚠️ Geolocation not available');
+        document.getElementById('gpsStatus').innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Not Available';
     }
 }
 
-// Activate GPS speed tracking
+// Calculate distance between two GPS coordinates (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Update trip duration
+function updateTripDuration() {
+    const now = new Date();
+    const duration = (now - tripData.startTime) / 1000 / 60; // minutes
+    
+    let durationText;
+    if (duration < 60) {
+        durationText = Math.round(duration) + 'm';
+    } else {
+        const hours = Math.floor(duration / 60);
+        const minutes = Math.round(duration % 60);
+        durationText = `${hours}h ${minutes}m`;
+    }
+    
+    document.getElementById('tripDuration').textContent = durationText;
+    
+    // Update mobile version
+    const mobileDuration = document.getElementById('mobileTripDuration');
+    if (mobileDuration) mobileDuration.textContent = durationText;
+}
+
+// Reset trip data
+function resetTrip() {
+    if (confirm('Reset trip data?')) {
+        tripData = {
+            startTime: new Date(),
+            totalDistance: 0,
+            lastPosition: null,
+            speeds: [],
+            isTracking: true
+        };
+        document.getElementById('tripDistance').textContent = '0.0';
+        document.getElementById('tripDuration').textContent = '0m';
+        document.getElementById('avgSpeed').textContent = '0';
+        console.log('Trip data reset');
+    }
+}
+
+// Toggle GPS tracking
+function toggleGPS(element) {
+    element.classList.toggle('active');
+    tripData.isTracking = element.classList.contains('active');
+    console.log('GPS tracking:', tripData.isTracking ? 'enabled' : 'disabled');
+}
+
+// Start GPS tracking
 getRealGPSSpeed();
 
+// Update trip duration every minute
+setInterval(updateTripDuration, 60000);
+
 // ============================================
-// 3. GOOGLE MAPS NAVIGATION API
+// 3. LOCATION SERVICES STATUS
 // ============================================
-let currentNavigation = null;
-
-async function setDestination() {
-    try {
-        // Check if API key is configured
-        if (!API_CONFIG || API_CONFIG.GOOGLE_MAPS_API_KEY === 'PASTE_YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-            alert('⚠️ Google Maps API key not configured.\n\nPlease edit api-config.js and add your API key.');
-            return;
-        }
-
-        // Prompt for destination
-        const destination = prompt('Enter destination address:', 'Times Square, New York');
-        if (!destination) return;
-
-        // Get current position
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            const origin = `${position.coords.latitude},${position.coords.longitude}`;
-            await getDirections(origin, destination);
-        }, (error) => {
-            alert('Unable to get your location. Please enable GPS.');
+function checkLocationServices() {
+    if ("permissions" in navigator) {
+        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+            const statusElement = document.getElementById('locationStatus');
+            const iconElement = document.getElementById('locationIcon');
+            
+            if (result.state === 'granted') {
+                statusElement.textContent = 'Enabled and active';
+                iconElement.innerHTML = '<i class="fa-solid fa-check-circle" style="color: var(--success);"></i>';
+            } else if (result.state === 'prompt') {
+                statusElement.textContent = 'Click to enable';
+                iconElement.innerHTML = '<i class="fa-solid fa-exclamation-circle" style="color: var(--accent);"></i>';
+            } else {
+                statusElement.textContent = 'Disabled';
+                iconElement.innerHTML = '<i class="fa-solid fa-times-circle" style="color: var(--danger);"></i>';
+            }
         });
-
-    } catch(error) {
-        console.log('Navigation error:', error);
-        alert('Navigation error. Check console for details.');
     }
 }
 
-async function getDirections(origin, destination) {
-    const API_KEY = API_CONFIG.GOOGLE_MAPS_API_KEY;
+setTimeout(checkLocationServices, 2000);
+
+// ============================================
+// 4. SYSTEM INFO
+// ============================================
+function updateSystemInfo() {
+    // Browser detection
+    const ua = navigator.userAgent;
+    let browser = 'Unknown';
+    if (ua.includes('Chrome')) browser = 'Chrome';
+    else if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('Safari')) browser = 'Safari';
+    else if (ua.includes('Edge')) browser = 'Edge';
     
-    // Use CORS proxy for client-side requests
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${encodeURIComponent(destination)}&key=${API_KEY}`;
+    document.getElementById('browserInfo').textContent = browser;
     
-    try {
-        // Note: Direct API calls from browser may have CORS issues
-        // For production, call this from your backend server
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.status === 'OK') {
-            const route = data.routes[0];
-            const leg = route.legs[0];
+    // Screen info
+    const screen = window.screen;
+    document.getElementById('screenInfo').textContent = 
+        `${screen.width}x${screen.height}`;
+}
+
+updateSystemInfo();
+
+// ============================================
+// 5. QUICK ACTIONS
+// ============================================
+function shareLocation() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const url = `https://www.google.com/maps?q=${lat},${lon}`;
             
-            // Store navigation data
-            currentNavigation = {
-                steps: leg.steps,
-                currentStep: 0,
-                destination: leg.end_address
-            };
-            
-            // Update display with first step
-            updateNavigationDisplay();
-            
-            console.log('✅ Navigation started to:', destination);
-        } else {
-            throw new Error('Directions API error: ' + data.status);
-        }
-    } catch(error) {
-        console.log('Maps API error:', error);
-        
-        // Fallback: Show basic navigation
-        document.getElementById('navInstruction').textContent = `Navigate to ${destination}`;
-        document.getElementById('navDistance').textContent = 'Calculating route...';
-        alert('Note: For full navigation, this needs to run on a server due to CORS restrictions.\n\nAlternative: Use the Maps API from your backend.');
+            if (navigator.share) {
+                navigator.share({
+                    title: 'My Location',
+                    text: 'Here is my current location',
+                    url: url
+                });
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(url);
+                alert('Location link copied to clipboard!');
+            }
+        });
     }
 }
 
-function updateNavigationDisplay() {
-    if (!currentNavigation) return;
-    
-    const step = currentNavigation.steps[currentNavigation.currentStep];
-    
-    // Update instruction
-    const instruction = step.html_instructions.replace(/<[^>]*>/g, ''); // Remove HTML tags
-    document.getElementById('navInstruction').textContent = instruction;
-    document.getElementById('navDistance').textContent = step.distance.text;
-    
-    // Update icon based on maneuver
-    const iconMap = {
-        'turn-right': 'fa-arrow-right',
-        'turn-left': 'fa-arrow-left',
-        'straight': 'fa-arrow-up',
-        'merge': 'fa-code-merge',
-        'roundabout': 'fa-circle-dot'
-    };
-    
-    const maneuver = step.maneuver || 'straight';
-    const iconClass = iconMap[maneuver] || 'fa-location-arrow';
-    document.getElementById('navIcon').innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
-    
-    // Update ETA and remaining distance
-    const leg = currentNavigation.steps.reduce((acc, s) => ({
-        duration: acc.duration + s.duration.value,
-        distance: acc.distance + s.distance.value
-    }), { duration: 0, distance: 0 });
-    
-    const etaMinutes = Math.round(leg.duration / 60);
-    const remainingMiles = (leg.distance / 1609.34).toFixed(1);
-    
-    document.getElementById('navETA').textContent = `ETA: ${etaMinutes} min`;
-    document.getElementById('navRemaining').textContent = `${remainingMiles} mi remaining`;
-}
-
 // ============================================
-// 4. ALTERNATIVE: EMBEDDED GOOGLE MAPS
-// ============================================
-function openMapsInIframe(destination) {
-    // This works without API key!
-    const mapsUrl = `https://www.google.com/maps/embed/v1/directions?key=${API_CONFIG.GOOGLE_MAPS_API_KEY}&origin=current+location&destination=${encodeURIComponent(destination)}&mode=driving`;
-    
-    // You can embed this in your interface
-    console.log('Maps URL:', mapsUrl);
-}
-
-// ============================================
-// BATTERY TRACKING (Phone battery as fallback)
+// 6. BATTERY STATUS (Phone fallback)
 // ============================================
 if ('getBattery' in navigator) {
     navigator.getBattery().then(battery => {
         const updateBattery = () => {
             const level = Math.floor(battery.level * 100);
-            // Only update if no real car data
-            if (document.getElementById('battery').textContent.includes('%')) {
-                document.getElementById('battery').textContent = level + '%';
-                document.getElementById('batteryPercent').textContent = level + '%';
-            }
+            document.getElementById('battery').textContent = level + '%';
         };
         
         updateBattery();
         battery.addEventListener('levelchange', updateBattery);
+        battery.addEventListener('chargingchange', updateBattery);
     });
+} else {
+    // Default battery display
+    document.getElementById('battery').textContent = 'N/A';
 }
-
-// ============================================
-// Fallback: Update trip data with GPS
-// ============================================
-let tripStartTime = new Date();
-let tripDistance = 0;
-
-function updateTripData() {
-    const duration = (new Date() - tripStartTime) / (1000 * 60 * 60);
-    const hours = Math.floor(duration);
-    const minutes = Math.round((duration - hours) * 60);
-    
-    document.getElementById('duration').textContent = 
-        hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-}
-
-setInterval(updateTripData, 60000); // Update every minute
 
 console.log('====================================');
 console.log('🚗 Car Entertainment System Ready!');
 console.log('====================================');
 console.log('✅ Weather API: Checking...');
 console.log('✅ GPS Speed: Active');
-console.log('✅ Navigation: Ready');
+console.log('✅ Navigation: OpenStreetMap (Free)');
 console.log('');
-console.log('⚠️ Make sure to configure api-config.js with your API keys!');
+console.log('⚠️ All systems operational!');
 console.log('====================================');
+
+// ============================================
+// LEAFLET.JS OPENSTREETMAP NAVIGATION
+// ============================================
+let userLocation = null;
+let currentDestination = null;
+let map = null;
+let userMarker = null;
+let routingControl = null;
+
+// Initialize map when map view is opened
+function initializeMap() {
+    if (map) return; // Already initialized
+    
+    // Create map centered on default location
+    map = L.map('map').setView([51.5074, -0.1278], 13); // London default
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Add user location marker when available
+    if (userLocation) {
+        updateMapLocation();
+    }
+    
+    console.log('✅ Map initialized');
+}
+
+// Track user location
+let locationWatchId = null;
+let locationPermissionGranted = false;
+
+function trackUserLocation() {
+    if ("geolocation" in navigator) {
+        // Only request once
+        if (locationWatchId) return;
+        
+        locationWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                locationPermissionGranted = true;
+                userLocation = {
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude
+                };
+                
+                // Update location displays
+                const locationText = `${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`;
+                document.getElementById('currentLocation').textContent = locationText;
+                
+                const mapSourceEl = document.getElementById('mapSourceLocation');
+                if (mapSourceEl) {
+                    mapSourceEl.textContent = locationText;
+                }
+                
+                // Update map if it exists
+                updateMapLocation();
+            },
+            (error) => {
+                console.log('Location tracking error:', error);
+                document.getElementById('currentLocation').textContent = 'Location unavailable';
+                
+                const mapSourceEl = document.getElementById('mapSourceLocation');
+                if (mapSourceEl) {
+                    mapSourceEl.textContent = 'Enable GPS';
+                }
+            },
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+        );
+    }
+}
+
+// Call only once
+trackUserLocation();
+
+// Update map with user location
+function updateMapLocation() {
+    if (!map || !userLocation) return;
+    
+    // Remove old marker if exists
+    if (userMarker) {
+        map.removeLayer(userMarker);
+    }
+    
+    // Add new marker at user location
+    userMarker = L.marker([userLocation.lat, userLocation.lon], {
+        icon: L.icon({
+            iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNSIgY3k9IjE1IiByPSIxMCIgZmlsbD0iIzAwZDJmZiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        })
+    }).addTo(map);
+    
+    userMarker.bindPopup('📍 Your Location').openPopup();
+    
+    // Center map on user location
+    map.setView([userLocation.lat, userLocation.lon], 13);
+}
+
+// Geocode destination and show route
+async function startNavigation() {
+    const destination = document.getElementById('destinationInput').value.trim();
+    
+    if (!destination) {
+        alert('Please enter a destination');
+        return;
+    }
+    
+    if (!userLocation) {
+        alert('Getting your location... Please wait and try again.');
+        return;
+    }
+    
+    // Initialize map if not already done
+    if (!map) {
+        initializeMap();
+    }
+    
+    // Hide loading message
+    document.getElementById('map-loading').style.display = 'none';
+    
+    currentDestination = destination;
+    
+    // Update destination display
+    document.getElementById('mapDestinationLocation').textContent = destination;
+    document.getElementById('navInstruction').textContent = `Searching for ${destination}...`;
+    document.getElementById('navDistance').textContent = 'Calculating route...';
+    
+    try {
+        // Geocode with user location as viewbox to prioritize nearby results
+        const viewbox = `${userLocation.lon - 0.5},${userLocation.lat - 0.5},${userLocation.lon + 0.5},${userLocation.lat + 0.5}`;
+        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&viewbox=${viewbox}&bounded=1&limit=5`;
+        
+        // If bounded search fails, try unbounded but still prioritize by proximity
+        let response = await fetch(geocodeUrl);
+        let data = await response.json();
+        
+        // If no results with bounded search, try proximity search
+        if (!data || data.length === 0) {
+            const proximityUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}&lat=${userLocation.lat}&lon=${userLocation.lon}&limit=5`;
+            response = await fetch(proximityUrl);
+            data = await response.json();
+        }
+        
+        if (data && data.length > 0) {
+            // Find closest result
+            let closestResult = data[0];
+            let minDistance = Infinity;
+            
+            data.forEach(result => {
+                const resultLat = parseFloat(result.lat);
+                const resultLon = parseFloat(result.lon);
+                
+                // Calculate distance from user
+                const distance = Math.sqrt(
+                    Math.pow(resultLat - userLocation.lat, 2) + 
+                    Math.pow(resultLon - userLocation.lon, 2)
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestResult = result;
+                }
+            });
+            
+            const destLat = parseFloat(closestResult.lat);
+            const destLon = parseFloat(closestResult.lon);
+            
+            // Show which result was selected
+            document.getElementById('mapDestinationLocation').textContent = closestResult.display_name;
+            
+            // Remove old routing control if exists
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+            
+            // Add routing control with waypoints
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLocation.lat, userLocation.lon),
+                    L.latLng(destLat, destLon)
+                ],
+                routeWhileDragging: false,
+                showAlternatives: false,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: true,
+                lineOptions: {
+                    styles: [{color: '#00d2ff', opacity: 0.8, weight: 6}]
+                },
+                createMarker: function(i, waypoint, n) {
+                    const marker = L.marker(waypoint.latLng, {
+                        icon: L.icon({
+                            iconUrl: i === 0 ? 
+                                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iMzAiIHZpZXdCb3g9IjAgMCAzMCAzMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNSIgY3k9IjE1IiByPSIxMCIgZmlsbD0iIzAwZDJmZiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+' :
+                                'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAzMCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTUgMEMxMC4wMyAwIDYgNC4wMyA2IDE5QzYgMTMuOTcgMTUgNDAgMTUgNDBTMjQgMjMuOTcgMjQgOUMyNCA0LjAzIDE5Ljk3IDAgMTUgMFoiIGZpbGw9IiNmZjRkNGQiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjkiIHI9IjUiIGZpbGw9IndoaXRlIi8+PC9zdmc+',
+                            iconSize: [30, i === 0 ? 30 : 40],
+                            iconAnchor: [15, i === 0 ? 15 : 40]
+                        })
+                    });
+                    
+                    marker.bindPopup(i === 0 ? '🚗 Start' : '🏁 Destination');
+                    return marker;
+                },
+                containerClassName: 'leaflet-routing-container-custom'
+            }).addTo(map);
+            
+            // Listen for route found event
+            routingControl.on('routesfound', function(e) {
+                const routes = e.routes;
+                const summary = routes[0].summary;
+                const instructions = routes[0].instructions;
+                
+                // Update UI with route info
+                const distanceKm = (summary.totalDistance / 1000).toFixed(1);
+                const distanceMiles = (distanceKm * 0.621371).toFixed(1);
+                const timeMinutes = Math.round(summary.totalTime / 60);
+                
+                document.getElementById('navDistance').textContent = `${distanceMiles} miles (${distanceKm} km)`;
+                document.getElementById('navETA').textContent = `ETA: ${timeMinutes} min`;
+                
+                // Update home screen with first instruction
+                if (instructions && instructions.length > 0) {
+                    const firstInstruction = instructions[0];
+                    const navInstructionEl = document.getElementById('navInstruction');
+                    if (navInstructionEl) {
+                        navInstructionEl.textContent = firstInstruction.text || `Navigate to ${destination}`;
+                    }
+                    
+                    // Show turn-by-turn on home screen
+                    const homeDirectionsList = document.getElementById('homeDirectionsList');
+                    const directionsContent = document.getElementById('directionsContent');
+                    
+                    if (homeDirectionsList && directionsContent) {
+                        homeDirectionsList.style.display = 'block';
+                        directionsContent.innerHTML = '';
+                        
+                        // Show first 5 instructions
+                        instructions.slice(0, 5).forEach((instruction, index) => {
+                            const directionDiv = document.createElement('div');
+                            directionDiv.style.cssText = 'padding: 8px; margin-bottom: 5px; background: var(--glass); border-radius: 8px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px;';
+                            
+                            const iconSpan = document.createElement('span');
+                            iconSpan.style.cssText = 'color: var(--accent); min-width: 20px;';
+                            iconSpan.textContent = `${index + 1}.`;
+                            
+                            const textSpan = document.createElement('span');
+                            textSpan.textContent = instruction.text;
+                            
+                            const distSpan = document.createElement('span');
+                            distSpan.style.cssText = 'margin-left: auto; color: var(--text-dim); font-size: 0.75rem;';
+                            distSpan.textContent = (instruction.distance / 1609.34).toFixed(1) + ' mi';
+                            
+                            directionDiv.appendChild(iconSpan);
+                            directionDiv.appendChild(textSpan);
+                            directionDiv.appendChild(distSpan);
+                            directionsContent.appendChild(directionDiv);
+                        });
+                        
+                        if (instructions.length > 5) {
+                            const moreDiv = document.createElement('div');
+                            moreDiv.style.cssText = 'padding: 8px; text-align: center; color: var(--text-dim); font-size: 0.8rem;';
+                            moreDiv.textContent = `+ ${instructions.length - 5} more steps`;
+                            directionsContent.appendChild(moreDiv);
+                        }
+                    }
+                }
+                
+                console.log(`✅ Route found: ${distanceMiles} miles, ${timeMinutes} minutes`);
+            });
+            
+            console.log('✅ Navigation started to:', closestResult.display_name);
+        } else {
+            alert('Destination not found. Please try:\n- Full address (e.g., "123 Main St, City")\n- Landmark name (e.g., "Eiffel Tower")\n- Or use quick buttons below');
+            document.getElementById('navDistance').textContent = 'Destination not found';
+        }
+    } catch (error) {
+        console.error('Navigation error:', error);
+        alert('Error finding route. Please check your internet connection.');
+    }
+}
+
+// Find nearby places
+async function findNearby(placeType) {
+    if (!userLocation) {
+        alert('Getting your location...');
+        return;
+    }
+    
+    // Initialize map if not already done
+    if (!map) {
+        initializeMap();
+    }
+    
+    document.getElementById('map-loading').style.display = 'none';
+    
+    // Search for nearby places using Overpass API (better for "near me" searches)
+    // Create bounding box around user (about 10km radius)
+    const radius = 0.1; // degrees (roughly 10km)
+    const bbox = `${userLocation.lat - radius},${userLocation.lon - radius},${userLocation.lat + radius},${userLocation.lon + radius}`;
+    
+    // Use Nominatim with bounded search
+    const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeType)}&viewbox=${userLocation.lon - radius},${userLocation.lat - radius},${userLocation.lon + radius},${userLocation.lat + radius}&bounded=1&limit=10`;
+    
+    try {
+        const response = await fetch(searchUrl);
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            // Clear old markers except user marker
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker && layer !== userMarker) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Remove old routing
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+            
+            // Calculate distance for each result
+            const resultsWithDistance = data.map(place => {
+                const placeLat = parseFloat(place.lat);
+                const placeLon = parseFloat(place.lon);
+                
+                // Calculate distance in km
+                const R = 6371; // Earth radius in km
+                const dLat = (placeLat - userLocation.lat) * Math.PI / 180;
+                const dLon = (placeLon - userLocation.lon) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(placeLat * Math.PI / 180) *
+                         Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+                
+                return { ...place, distance };
+            });
+            
+            // Sort by distance
+            resultsWithDistance.sort((a, b) => a.distance - b.distance);
+            
+            // Add markers for closest 5 results
+            resultsWithDistance.slice(0, 5).forEach((place, index) => {
+                const marker = L.marker([parseFloat(place.lat), parseFloat(place.lon)], {
+                    icon: L.icon({
+                        iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjUiIGhlaWdodD0iMzUiIHZpZXdCb3g9IjAgMCAyNSAzNSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIuNSAwQzguMzYgMCA1IDMuMzYgNSA3LjVDNSAxMS42NSAxMi41IDM1IDEyLjUgMzVTMjAgMTEuNjUgMjAgNy41QzIwIDMuMzYgMTYuNjQgMCAxMi41IDBaIiBmaWxsPSIjZmY5NTAwIi8+PGNpcmNsZSBjeD0iMTIuNSIgY3k9IjcuNSIgcj0iNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=',
+                        iconSize: [25, 35],
+                        iconAnchor: [12.5, 35]
+                    })
+                });
+                
+                const distanceMiles = (place.distance * 0.621371).toFixed(1);
+                marker.bindPopup(`
+                    <b>${index + 1}. ${place.display_name}</b><br>
+                    Distance: ${distanceMiles} miles<br>
+                    <button onclick="navigateToCoords(${place.lat}, ${place.lon}, '${place.display_name.replace(/'/g, "\\'")}')">Navigate Here</button>
+                `);
+                marker.addTo(map);
+                
+                // Open first marker popup
+                if (index === 0) {
+                    marker.openPopup();
+                }
+            });
+            
+            // Use closest result as destination
+            const closest = resultsWithDistance[0];
+            document.getElementById('destinationInput').value = closest.display_name;
+            document.getElementById('mapDestinationLocation').textContent = `Nearby ${placeType} (${(closest.distance * 0.621371).toFixed(1)} mi away)`;
+            
+            // Adjust map view to show all markers
+            const group = L.featureGroup(map.getLayers().filter(layer => layer instanceof L.Marker));
+            map.fitBounds(group.getBounds().pad(0.1));
+            
+            console.log(`✅ Found ${data.length} ${placeType}(s) nearby`);
+        } else {
+            alert(`No ${placeType} found nearby. Try a wider search area.`);
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        alert('Error searching nearby. Please try again.');
+    }
+}
+
+// Navigate to specific coordinates (used by nearby search popups)
+function navigateToCoords(lat, lon, name) {
+    document.getElementById('destinationInput').value = name;
+    document.getElementById('mapDestinationLocation').textContent = name;
+    
+    // Remove old routing
+    if (routingControl) {
+        map.removeControl(routingControl);
+    }
+    
+    // Add new route
+    routingControl = L.Routing.control({
+        waypoints: [
+            L.latLng(userLocation.lat, userLocation.lon),
+            L.latLng(lat, lon)
+        ],
+        routeWhileDragging: false,
+        showAlternatives: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        lineOptions: {
+            styles: [{color: '#00d2ff', opacity: 0.8, weight: 6}]
+        },
+        containerClassName: 'leaflet-routing-container-custom'
+    }).addTo(map);
+    
+    console.log('✅ Navigating to:', name);
+}
+
+// Map controls
+function zoomMap(direction) {
+    if (!map) return;
+    
+    if (direction === 'in') {
+        map.zoomIn();
+    } else {
+        map.zoomOut();
+    }
+}
+
+function centerMap() {
+    if (!map || !userLocation) return;
+    
+    map.setView([userLocation.lat, userLocation.lon], 13);
+}
+
+function toggleMapFullscreen() {
+    const mapContainer = document.getElementById('map-container');
+    
+    if (!document.fullscreenElement) {
+        if (mapContainer.requestFullscreen) {
+            mapContainer.requestFullscreen();
+        } else if (mapContainer.webkitRequestFullscreen) {
+            mapContainer.webkitRequestFullscreen();
+        }
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// Alternative: Quick navigation function for backward compatibility
+function openNavigation() {
+    switchView('map');
+    setTimeout(() => {
+        if (!map) initializeMap();
+    }, 100);
+}
+
+function setDestination() {
+    switchView('map');
+    setTimeout(() => {
+        if (!map) initializeMap();
+    }, 100);
+}
+
+// Initialize map when switching to map view
+document.addEventListener('DOMContentLoaded', function() {
+    // Watch for view changes
+    const originalSwitchView = window.switchView;
+    window.switchView = function(viewName) {
+        originalSwitchView(viewName);
+        
+        if (viewName === 'map' && !map) {
+            setTimeout(initializeMap, 100);
+        }
+    };
+});
 
 // ============================================
 // GAMES & NEWS FUNCTIONS
@@ -1537,13 +2219,27 @@ function reloadIframe(iframeId) {
 }
 
 function toggleFullscreen(iframeId) {
-    const container = document.getElementById(iframeId).parentElement.parentElement;
-    if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(err => {
-            console.log('Fullscreen error:', err);
-        });
+    const iframe = document.getElementById(iframeId);
+    
+    if (!iframe) return;
+    
+    // Try different fullscreen methods for better compatibility
+    if (iframe.requestFullscreen) {
+        iframe.requestFullscreen();
+    } else if (iframe.webkitRequestFullscreen) { // Safari
+        iframe.webkitRequestFullscreen();
+    } else if (iframe.msRequestFullscreen) { // IE11
+        iframe.msRequestFullscreen();
+    } else if (iframe.mozRequestFullScreen) { // Firefox
+        iframe.mozRequestFullScreen();
     } else {
-        document.exitFullscreen();
+        // Fallback: maximize the iframe container
+        const container = iframe.parentElement;
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else {
+            alert('Fullscreen not supported on this browser');
+        }
     }
 }
 
