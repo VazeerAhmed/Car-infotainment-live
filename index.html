@@ -21,6 +21,43 @@
             GOOGLE_MAPS_API_KEY: '',
             FAVORITE_DESTINATIONS: []
         };
+        
+        // Theme Configuration
+        const THEMES = {
+            default: {
+                name: 'Cyan Blue',
+                accent: '#00d9ff',
+                accentSecondary: '#7c3aed',
+                glow: 'rgba(0, 217, 255, 0.4)'
+            },
+            purple: {
+                name: 'Purple Dream',
+                accent: '#a855f7',
+                accentSecondary: '#ec4899',
+                glow: 'rgba(168, 85, 247, 0.4)'
+            },
+            green: {
+                name: 'Emerald',
+                accent: '#10b981',
+                accentSecondary: '#3b82f6',
+                glow: 'rgba(16, 185, 129, 0.4)'
+            },
+            orange: {
+                name: 'Sunset',
+                accent: '#f97316',
+                accentSecondary: '#ef4444',
+                glow: 'rgba(249, 115, 22, 0.4)'
+            },
+            red: {
+                name: 'Racing Red',
+                accent: '#ef4444',
+                accentSecondary: '#dc2626',
+                glow: 'rgba(239, 68, 68, 0.4)'
+            }
+        };
+        
+        // Load saved theme
+        let currentTheme = localStorage.getItem('autoverse-theme') || 'default';
     </script>
     <style>
         :root {
@@ -912,6 +949,19 @@
                 <div class="iframe-container">
                     <div class="loading"><i class="fa-solid fa-spinner"></i></div>
                     <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)" allow="geolocation; autoplay; encrypted-media; fullscreen"></iframe>
+                    
+                    <!-- Media Controls Overlay - Hidden by default, only shows when Bluetooth not connected -->
+                    <div id="media-controls-overlay" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 60px; padding: 15px 30px; display: none; align-items: center; gap: 20px; z-index: 100; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);">
+                        <button onclick="mediaControl('previous')" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 1.8rem; transition: all 0.2s; padding: 10px;">
+                            <i class="fa-solid fa-backward-step"></i>
+                        </button>
+                        <button id="playPauseBtn" onclick="mediaControl('playpause')" style="background: var(--accent); border: none; color: white; cursor: pointer; font-size: 2rem; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 4px 16px var(--glow);">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button onclick="mediaControl('next')" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 1.8rem; transition: all 0.2s; padding: 10px;">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1184,11 +1234,59 @@
 
                     <div class="setting-item">
                         <div class="setting-info">
+                            <h4>Show Media Controls</h4>
+                            <p>Display on-screen music buttons</p>
+                        </div>
+                        <div class="toggle" onclick="toggleMediaControls(this)"></div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
                             <h4>Location Services</h4>
                             <p id="locationStatus">Checking...</p>
                         </div>
                         <span id="locationIcon"><i class="fa-solid fa-spinner fa-spin"></i></span>
                     </div>
+                </div>
+
+                <!-- Theme Selector -->
+                <h3 style="margin: 30px 0 20px; font-size: 1.3rem;">Appearance</h3>
+                <div style="padding: 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 16px;">
+                    <h4 style="margin-bottom: 15px; font-size: 1rem;">Color Theme</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">
+                        <button onclick="changeTheme('default')" class="theme-btn" data-theme="default" style="padding: 15px; background: linear-gradient(135deg, #00d9ff, #7c3aed); border: 2px solid var(--border); border-radius: 12px; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s; position: relative;">
+                            <i class="fa-solid fa-droplet" style="margin-right: 5px;"></i>
+                            Cyan Blue
+                            <i class="fa-solid fa-check theme-check" style="position: absolute; top: 5px; right: 5px; display: none;"></i>
+                        </button>
+                        
+                        <button onclick="changeTheme('purple')" class="theme-btn" data-theme="purple" style="padding: 15px; background: linear-gradient(135deg, #a855f7, #ec4899); border: 2px solid var(--border); border-radius: 12px; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s; position: relative;">
+                            <i class="fa-solid fa-heart" style="margin-right: 5px;"></i>
+                            Purple
+                            <i class="fa-solid fa-check theme-check" style="position: absolute; top: 5px; right: 5px; display: none;"></i>
+                        </button>
+                        
+                        <button onclick="changeTheme('green')" class="theme-btn" data-theme="green" style="padding: 15px; background: linear-gradient(135deg, #10b981, #3b82f6); border: 2px solid var(--border); border-radius: 12px; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s; position: relative;">
+                            <i class="fa-solid fa-leaf" style="margin-right: 5px;"></i>
+                            Emerald
+                            <i class="fa-solid fa-check theme-check" style="position: absolute; top: 5px; right: 5px; display: none;"></i>
+                        </button>
+                        
+                        <button onclick="changeTheme('orange')" class="theme-btn" data-theme="orange" style="padding: 15px; background: linear-gradient(135deg, #f97316, #ef4444); border: 2px solid var(--border); border-radius: 12px; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s; position: relative;">
+                            <i class="fa-solid fa-sun" style="margin-right: 5px;"></i>
+                            Sunset
+                            <i class="fa-solid fa-check theme-check" style="position: absolute; top: 5px; right: 5px; display: none;"></i>
+                        </button>
+                        
+                        <button onclick="changeTheme('red')" class="theme-btn" data-theme="red" style="padding: 15px; background: linear-gradient(135deg, #ef4444, #dc2626); border: 2px solid var(--border); border-radius: 12px; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s; position: relative;">
+                            <i class="fa-solid fa-car" style="margin-right: 5px;"></i>
+                            Racing Red
+                            <i class="fa-solid fa-check theme-check" style="position: absolute; top: 5px; right: 5px; display: none;"></i>
+                        </button>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-top: 15px; text-align: center;">
+                        <i class="fa-solid fa-palette"></i> Theme will be saved automatically
+                    </p>
                 </div>
 
                 <h3 style="margin: 30px 0 20px; font-size: 1.3rem;">System Information</h3>
@@ -2382,6 +2480,169 @@ function switchMusicService() {
     
     console.log(`✅ Switched to: ${service.name}`);
 }
+
+// ============================================
+// CAR BLUETOOTH MEDIA CONTROLS
+// ============================================
+let isPlaying = false;
+
+// Setup Media Session API for car Bluetooth controls
+function setupMediaSession() {
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'AutoVerse Music',
+            artist: 'Now Playing',
+            album: 'Car Entertainment',
+            artwork: [
+                { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%2300d9ff" width="100" height="100"/><text x="50" y="70" font-size="60" text-anchor="middle" fill="white">♪</text></svg>', sizes: '512x512', type: 'image/svg+xml' }
+            ]
+        });
+
+        // Handle car Bluetooth controls
+        navigator.mediaSession.setActionHandler('play', () => {
+            mediaControl('play');
+        });
+        
+        navigator.mediaSession.setActionHandler('pause', () => {
+            mediaControl('pause');
+        });
+        
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+            mediaControl('previous');
+        });
+        
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+            mediaControl('next');
+        });
+        
+        console.log('✅ Media Session API initialized - Car controls ready!');
+    }
+}
+
+// Media control function
+function mediaControl(action) {
+    const iframe = document.getElementById('music-iframe');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const playPauseIcon = playPauseBtn?.querySelector('i');
+    
+    console.log('🎵 Media control:', action);
+    
+    // Try to communicate with iframe (if music site supports it)
+    try {
+        if (iframe && iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+                type: 'media-control',
+                action: action
+            }, '*');
+        }
+    } catch (e) {
+        console.log('Could not send message to iframe:', e);
+    }
+    
+    // Update UI
+    if (action === 'play') {
+        isPlaying = true;
+        if (playPauseIcon) playPauseIcon.className = 'fa-solid fa-pause';
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'playing';
+        }
+    } else if (action === 'pause') {
+        isPlaying = false;
+        if (playPauseIcon) playPauseIcon.className = 'fa-solid fa-play';
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'paused';
+        }
+    } else if (action === 'playpause') {
+        if (isPlaying) {
+            mediaControl('pause');
+        } else {
+            mediaControl('play');
+        }
+    }
+    
+    // Show feedback (only if controls visible)
+    const controlsOverlay = document.getElementById('media-controls-overlay');
+    if (controlsOverlay && controlsOverlay.style.display === 'flex') {
+        controlsOverlay.style.transform = 'translateX(-50%) scale(1.1)';
+        setTimeout(() => {
+            controlsOverlay.style.transform = 'translateX(-50%) scale(1)';
+        }, 150);
+    }
+}
+
+// Toggle media controls visibility
+function toggleMediaControls(element) {
+    element.classList.toggle('active');
+    const isActive = element.classList.contains('active');
+    const controlsOverlay = document.getElementById('media-controls-overlay');
+    
+    if (controlsOverlay) {
+        controlsOverlay.style.display = isActive ? 'flex' : 'none';
+    }
+    
+    // Save preference
+    localStorage.setItem('autoverse-show-controls', isActive ? 'true' : 'false');
+    
+    console.log('Media controls:', isActive ? 'shown' : 'hidden (Bluetooth mode)');
+}
+
+// Load saved controls preference
+function loadMediaControlsPreference() {
+    const showControls = localStorage.getItem('autoverse-show-controls') === 'true';
+    const controlsOverlay = document.getElementById('media-controls-overlay');
+    
+    if (controlsOverlay && showControls) {
+        controlsOverlay.style.display = 'flex';
+    }
+}
+
+// Apply on load
+window.addEventListener('load', loadMediaControlsPreference);
+
+// Initialize media session
+setupMediaSession();
+
+// ============================================
+// THEME ENGINE
+// ============================================
+function changeTheme(themeName) {
+    const theme = THEMES[themeName];
+    if (!theme) return;
+    
+    // Update CSS variables
+    document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--accent-secondary', theme.accentSecondary);
+    document.documentElement.style.setProperty('--glow', theme.glow);
+    
+    // Save to localStorage
+    localStorage.setItem('autoverse-theme', themeName);
+    currentTheme = themeName;
+    
+    // Update UI - show checkmark on active theme
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        const check = btn.querySelector('.theme-check');
+        if (btn.dataset.theme === themeName) {
+            btn.style.borderColor = theme.accent;
+            btn.style.boxShadow = `0 0 20px ${theme.glow}`;
+            if (check) check.style.display = 'block';
+        } else {
+            btn.style.borderColor = 'var(--border)';
+            btn.style.boxShadow = 'none';
+            if (check) check.style.display = 'none';
+        }
+    });
+    
+    console.log(`✅ Theme changed to: ${theme.name}`);
+}
+
+// Apply saved theme on load
+function applySavedTheme() {
+    const savedTheme = localStorage.getItem('autoverse-theme') || 'default';
+    changeTheme(savedTheme);
+}
+
+// Apply theme when page loads
+window.addEventListener('load', applySavedTheme);
 
 // Add hover effects to buttons
 document.querySelectorAll('button').forEach(btn => {
