@@ -950,6 +950,21 @@
                     <div class="loading"><i class="fa-solid fa-spinner"></i></div>
                     <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)" allow="geolocation; autoplay; encrypted-media; fullscreen"></iframe>
                     
+                    <!-- Bluetooth Activation Notice -->
+                    <div id="bluetooth-notice" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(20px); border: 2px solid var(--accent); border-radius: 20px; padding: 30px; max-width: 400px; text-align: center; z-index: 1000; box-shadow: 0 0 40px var(--glow);">
+                        <i class="fa-solid fa-bluetooth" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
+                        <h3 style="margin-bottom: 15px; font-size: 1.3rem;">Activate Bluetooth Controls</h3>
+                        <p style="color: var(--text-dim); margin-bottom: 20px; font-size: 0.9rem;">
+                            To use car Bluetooth controls, you need to activate media playback first.
+                        </p>
+                        <button onclick="activateBluetoothControls()" style="width: 100%; padding: 15px; background: var(--accent); border: none; border-radius: 12px; color: white; font-weight: 600; font-size: 1rem; cursor: pointer; margin-bottom: 10px;">
+                            <i class="fa-solid fa-play"></i> Activate Now
+                        </button>
+                        <button onclick="hideBluetoothNotice()" style="width: 100%; padding: 12px; background: transparent; border: 1px solid var(--border); border-radius: 12px; color: var(--text-dim); font-size: 0.85rem; cursor: pointer;">
+                            Skip (Manual Activation Later)
+                        </button>
+                    </div>
+                    
                     <!-- Media Controls Overlay - Hidden by default, only shows when Bluetooth not connected -->
                     <div id="media-controls-overlay" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 60px; padding: 15px 30px; display: none; align-items: center; gap: 20px; z-index: 100; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);">
                         <button onclick="mediaControl('previous')" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 1.8rem; transition: all 0.2s; padding: 10px;">
@@ -1007,12 +1022,12 @@
                         <p>Top Rated Games</p>
                     </div>
                     
-                    <div class="game-card" onclick="openGame('https://www.msn.com/en-in/play')">
+                    <div class="game-card" onclick="openGame('https://www.msn.com/en-in/play?cgfrom=cg_home_pivot&ocid=hpmsn&cvid=697f2bd4c99847cbaaed3f307548c264&ei=13')">
                         <div class="game-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                             <i class="fa-brands fa-microsoft"></i>
                         </div>
                         <h3>MSN Games</h3>
-                        <p>Opens in New Tab</p>
+                        <p>Play in Browser</p>
                     </div>
                     
                     <div class="game-card" onclick="openGame('https://www.y8.com/')">
@@ -1295,6 +1310,21 @@
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: var(--text-dim);">Weather API</span>
                             <span id="weatherStatus" style="color: var(--success);"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Connected</span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Bluetooth Media Controls</span>
+                            <span id="bluetoothStatus" style="color: var(--text-dim);"><i class="fa-solid fa-spinner fa-spin" style="font-size: 0.5rem;"></i> Checking...</span>
+                        </div>
+                        
+                        <div style="margin-top: 10px;">
+                            <button onclick="testMediaSession()" style="width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="fa-solid fa-bluetooth"></i>
+                                Test Bluetooth Controls
+                            </button>
+                            <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 8px; text-align: center;">
+                                Click to activate, then try car buttons
+                            </p>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: var(--text-dim);">GPS Status</span>
@@ -2485,38 +2515,98 @@ function switchMusicService() {
 // CAR BLUETOOTH MEDIA CONTROLS
 // ============================================
 let isPlaying = false;
+let mediaSessionInitialized = false;
 
 // Setup Media Session API for car Bluetooth controls
 function setupMediaSession() {
     if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: 'AutoVerse Music',
-            artist: 'Now Playing',
-            album: 'Car Entertainment',
-            artwork: [
-                { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%2300d9ff" width="100" height="100"/><text x="50" y="70" font-size="60" text-anchor="middle" fill="white">♪</text></svg>', sizes: '512x512', type: 'image/svg+xml' }
-            ]
-        });
+        try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'AutoVerse Music',
+                artist: 'Now Playing',
+                album: 'Car Entertainment',
+                artwork: [
+                    { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '512x512', type: 'image/svg+xml' }
+                ]
+            });
 
-        // Handle car Bluetooth controls
-        navigator.mediaSession.setActionHandler('play', () => {
-            mediaControl('play');
-        });
-        
-        navigator.mediaSession.setActionHandler('pause', () => {
-            mediaControl('pause');
-        });
-        
-        navigator.mediaSession.setActionHandler('previoustrack', () => {
-            mediaControl('previous');
-        });
-        
-        navigator.mediaSession.setActionHandler('nexttrack', () => {
-            mediaControl('next');
-        });
-        
-        console.log('✅ Media Session API initialized - Car controls ready!');
+            // Handle car Bluetooth controls
+            navigator.mediaSession.setActionHandler('play', () => {
+                console.log('🎵 Bluetooth: Play');
+                mediaControl('play');
+            });
+            
+            navigator.mediaSession.setActionHandler('pause', () => {
+                console.log('🎵 Bluetooth: Pause');
+                mediaControl('pause');
+            });
+            
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+                console.log('🎵 Bluetooth: Previous');
+                mediaControl('previous');
+            });
+            
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+                console.log('🎵 Bluetooth: Next');
+                mediaControl('next');
+            });
+            
+            navigator.mediaSession.setActionHandler('seekbackward', () => {
+                console.log('🎵 Bluetooth: Seek backward');
+                mediaControl('previous');
+            });
+            
+            navigator.mediaSession.setActionHandler('seekforward', () => {
+                console.log('🎵 Bluetooth: Seek forward');
+                mediaControl('next');
+            });
+            
+            // Set initial state
+            navigator.mediaSession.playbackState = 'paused';
+            
+            mediaSessionInitialized = true;
+            console.log('✅ Media Session API initialized - Car controls ready!');
+            
+            // Show success message
+            showMediaSessionStatus(true);
+            
+        } catch (error) {
+            console.error('❌ Media Session API error:', error);
+            showMediaSessionStatus(false);
+        }
+    } else {
+        console.warn('❌ Media Session API not supported');
+        showMediaSessionStatus(false);
     }
+}
+
+// Show media session status
+function showMediaSessionStatus(success) {
+    const statusDiv = document.getElementById('bluetoothStatus');
+    if (statusDiv) {
+        if (success) {
+            statusDiv.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem; color: var(--success);"></i> Connected';
+        } else {
+            statusDiv.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 0.5rem; color: var(--danger);"></i> Not Available';
+        }
+    }
+}
+
+// Test media session (call this from UI button)
+function testMediaSession() {
+    if (!mediaSessionInitialized) {
+        setupMediaSession();
+    }
+    
+    // Simulate play to activate media session
+    mediaControl('play');
+    
+    setTimeout(() => {
+        alert('Media Session Status:\n' + 
+              'Initialized: ' + mediaSessionInitialized + '\n' +
+              'Supported: ' + ('mediaSession' in navigator) + '\n\n' +
+              'Try pressing your car Bluetooth buttons now!');
+    }, 500);
 }
 
 // Media control function
@@ -2527,6 +2617,19 @@ function mediaControl(action) {
     
     console.log('🎵 Media control:', action);
     
+    // IMPORTANT: For GitHub Pages, we need to create/use an audio element
+    // to properly register with the browser's media session
+    let audioElement = document.getElementById('media-session-audio');
+    if (!audioElement) {
+        // Create a silent audio element to enable media session
+        audioElement = document.createElement('audio');
+        audioElement.id = 'media-session-audio';
+        audioElement.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        audioElement.loop = true;
+        audioElement.volume = 0; // Silent
+        document.body.appendChild(audioElement);
+    }
+    
     // Try to communicate with iframe (if music site supports it)
     try {
         if (iframe && iframe.contentWindow) {
@@ -2536,28 +2639,40 @@ function mediaControl(action) {
             }, '*');
         }
     } catch (e) {
-        console.log('Could not send message to iframe:', e);
+        console.log('Iframe message not sent:', e);
     }
     
-    // Update UI
+    // Update UI and media session state
     if (action === 'play') {
         isPlaying = true;
+        audioElement.play().catch(e => console.log('Audio play blocked:', e));
         if (playPauseIcon) playPauseIcon.className = 'fa-solid fa-pause';
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'playing';
         }
+        console.log('▶️ Playing');
     } else if (action === 'pause') {
         isPlaying = false;
+        audioElement.pause();
         if (playPauseIcon) playPauseIcon.className = 'fa-solid fa-play';
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'paused';
         }
+        console.log('⏸️ Paused');
     } else if (action === 'playpause') {
         if (isPlaying) {
             mediaControl('pause');
         } else {
             mediaControl('play');
         }
+    } else if (action === 'next') {
+        console.log('⏭️ Next track');
+        // Trigger play state to keep media session active
+        if (!isPlaying) mediaControl('play');
+    } else if (action === 'previous') {
+        console.log('⏮️ Previous track');
+        // Trigger play state to keep media session active
+        if (!isPlaying) mediaControl('play');
     }
     
     // Show feedback (only if controls visible)
@@ -2586,6 +2701,62 @@ function toggleMediaControls(element) {
     console.log('Media controls:', isActive ? 'shown' : 'hidden (Bluetooth mode)');
 }
 
+// Activate Bluetooth controls
+function activateBluetoothControls() {
+    console.log('🔵 Activating Bluetooth controls...');
+    
+    // Hide notice
+    hideBluetoothNotice();
+    
+    // Initialize media session
+    setupMediaSession();
+    
+    // Start playback to activate
+    mediaControl('play');
+    
+    // Show success message
+    setTimeout(() => {
+        const notice = document.createElement('div');
+        notice.style.cssText = 'position: fixed; top: 100px; left: 50%; transform: translateX(-50%); background: var(--success); color: white; padding: 15px 30px; border-radius: 12px; z-index: 10000; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
+        notice.innerHTML = '<i class="fa-solid fa-check-circle"></i> Bluetooth Controls Activated! Try your car buttons now.';
+        document.body.appendChild(notice);
+        
+        setTimeout(() => {
+            notice.remove();
+        }, 4000);
+    }, 500);
+    
+    // Save activation state
+    localStorage.setItem('autoverse-bluetooth-activated', 'true');
+}
+
+// Hide Bluetooth notice
+function hideBluetoothNotice() {
+    const notice = document.getElementById('bluetooth-notice');
+    if (notice) {
+        notice.style.display = 'none';
+    }
+    localStorage.setItem('autoverse-bluetooth-notice-hidden', 'true');
+}
+
+// Show Bluetooth notice if needed
+function checkBluetoothNotice() {
+    const activated = localStorage.getItem('autoverse-bluetooth-activated');
+    const noticeHidden = localStorage.getItem('autoverse-bluetooth-notice-hidden');
+    const notice = document.getElementById('bluetooth-notice');
+    
+    if (notice) {
+        if (activated || noticeHidden) {
+            notice.style.display = 'none';
+        } else {
+            // Show notice after a short delay
+            setTimeout(() => {
+                notice.style.display = 'block';
+            }, 2000);
+        }
+    }
+}
+
 // Load saved controls preference
 function loadMediaControlsPreference() {
     const showControls = localStorage.getItem('autoverse-show-controls') === 'true';
@@ -2594,6 +2765,9 @@ function loadMediaControlsPreference() {
     if (controlsOverlay && showControls) {
         controlsOverlay.style.display = 'flex';
     }
+    
+    // Check if we should show Bluetooth notice
+    checkBluetoothNotice();
 }
 
 // Apply on load
@@ -2668,3 +2842,4 @@ document.querySelectorAll('iframe').forEach(iframe => {
 
 </body>
 </html>
+
