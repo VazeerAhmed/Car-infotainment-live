@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Permissions-Policy" content="accelerometer=*, gyroscope=*, magnetometer=*, camera=*, microphone=*, geolocation=*, payment=*, usb=*">
     <title>AutoVerse | In-Car Entertainment System</title>
     
     <!-- Favicon - AutoVerse Logo -->
@@ -948,7 +949,7 @@
                 </div>
                 <div class="iframe-container">
                     <div class="loading"><i class="fa-solid fa-spinner"></i></div>
-                    <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)" allow="geolocation; autoplay; encrypted-media; fullscreen"></iframe>
+                    <iframe id="music-iframe" src="https://my-music-app-okqt.onrender.com/" onload="hideLoading(this)" allow="accelerometer; gyroscope; magnetometer; camera; microphone; geolocation; autoplay; encrypted-media; fullscreen; payment; usb"></iframe>
                     
                     <!-- Bluetooth Activation Notice -->
                     <div id="bluetooth-notice" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(20px); border: 2px solid var(--accent); border-radius: 20px; padding: 30px; max-width: 400px; text-align: center; z-index: 1000; box-shadow: 0 0 40px var(--glow);">
@@ -2517,69 +2518,6 @@ function switchMusicService() {
 let isPlaying = false;
 let mediaSessionInitialized = false;
 
-// Setup Media Session API for car Bluetooth controls
-function setupMediaSession() {
-    if ('mediaSession' in navigator) {
-        try {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'AutoVerse Music',
-                artist: 'Now Playing',
-                album: 'Car Entertainment',
-                artwork: [
-                    { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '512x512', type: 'image/svg+xml' }
-                ]
-            });
-
-            // Handle car Bluetooth controls
-            navigator.mediaSession.setActionHandler('play', () => {
-                console.log('🎵 Bluetooth: Play');
-                mediaControl('play');
-            });
-            
-            navigator.mediaSession.setActionHandler('pause', () => {
-                console.log('🎵 Bluetooth: Pause');
-                mediaControl('pause');
-            });
-            
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-                console.log('🎵 Bluetooth: Previous');
-                mediaControl('previous');
-            });
-            
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-                console.log('🎵 Bluetooth: Next');
-                mediaControl('next');
-            });
-            
-            navigator.mediaSession.setActionHandler('seekbackward', () => {
-                console.log('🎵 Bluetooth: Seek backward');
-                mediaControl('previous');
-            });
-            
-            navigator.mediaSession.setActionHandler('seekforward', () => {
-                console.log('🎵 Bluetooth: Seek forward');
-                mediaControl('next');
-            });
-            
-            // Set initial state
-            navigator.mediaSession.playbackState = 'paused';
-            
-            mediaSessionInitialized = true;
-            console.log('✅ Media Session API initialized - Car controls ready!');
-            
-            // Show success message
-            showMediaSessionStatus(true);
-            
-        } catch (error) {
-            console.error('❌ Media Session API error:', error);
-            showMediaSessionStatus(false);
-        }
-    } else {
-        console.warn('❌ Media Session API not supported');
-        showMediaSessionStatus(false);
-    }
-}
-
 // Show media session status
 function showMediaSessionStatus(success) {
     const statusDiv = document.getElementById('bluetoothStatus');
@@ -2594,19 +2532,20 @@ function showMediaSessionStatus(success) {
 
 // Test media session (call this from UI button)
 function testMediaSession() {
-    if (!mediaSessionInitialized) {
-        setupMediaSession();
+    console.log('🧪 Testing Media Session...');
+    
+    // Check support
+    const supported = 'mediaSession' in navigator;
+    console.log('Media Session API supported:', supported);
+    
+    if (!supported) {
+        alert('❌ Your browser does not support Media Session API.\n\nTry using Chrome or Samsung Internet browser.');
+        showMediaSessionStatus(false);
+        return;
     }
     
-    // Simulate play to activate media session
-    mediaControl('play');
-    
-    setTimeout(() => {
-        alert('Media Session Status:\n' + 
-              'Initialized: ' + mediaSessionInitialized + '\n' +
-              'Supported: ' + ('mediaSession' in navigator) + '\n\n' +
-              'Try pressing your car Bluetooth buttons now!');
-    }, 500);
+    // Activate
+    activateBluetoothControls();
 }
 
 // Media control function
@@ -2708,26 +2647,176 @@ function activateBluetoothControls() {
     // Hide notice
     hideBluetoothNotice();
     
-    // Initialize media session
-    setupMediaSession();
+    // IMPORTANT: Create and play audio with user gesture
+    let audioElement = document.getElementById('media-session-audio');
+    if (!audioElement) {
+        audioElement = document.createElement('audio');
+        audioElement.id = 'media-session-audio';
+        // Use a real short silent audio file
+        audioElement.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+        audioElement.loop = true;
+        audioElement.volume = 0.01; // Very quiet but not silent
+        document.body.appendChild(audioElement);
+    }
     
-    // Start playback to activate
-    mediaControl('play');
-    
-    // Show success message
-    setTimeout(() => {
-        const notice = document.createElement('div');
-        notice.style.cssText = 'position: fixed; top: 100px; left: 50%; transform: translateX(-50%); background: var(--success); color: white; padding: 15px 30px; border-radius: 12px; z-index: 10000; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.3);';
-        notice.innerHTML = '<i class="fa-solid fa-check-circle"></i> Bluetooth Controls Activated! Try your car buttons now.';
-        document.body.appendChild(notice);
+    // Play audio - this MUST happen from user click
+    audioElement.play().then(() => {
+        console.log('✅ Audio element playing');
         
-        setTimeout(() => {
-            notice.remove();
-        }, 4000);
-    }, 500);
+        // NOW initialize media session (after audio started)
+        if ('mediaSession' in navigator) {
+            try {
+                // Set metadata
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'AutoVerse Music',
+                    artist: 'Now Playing',
+                    album: 'Car Entertainment',
+                    artwork: [
+                        { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '96x96', type: 'image/svg+xml' },
+                        { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '128x128', type: 'image/svg+xml' },
+                        { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '192x192', type: 'image/svg+xml' },
+                        { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '256x256', type: 'image/svg+xml' },
+                        { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '384x384', type: 'image/svg+xml' },
+                        { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect fill="%2300d9ff" width="512" height="512"/><text x="256" y="370" font-size="300" text-anchor="middle" fill="white" font-family="Arial">♪</text></svg>', sizes: '512x512', type: 'image/svg+xml' }
+                    ]
+                });
+
+                // CRITICAL: Register ALL action handlers to show all buttons
+                navigator.mediaSession.setActionHandler('play', () => {
+                    console.log('🎵 CAR BUTTON: Play');
+                    audioElement.play();
+                    isPlaying = true;
+                    navigator.mediaSession.playbackState = 'playing';
+                    updatePlayPauseUI();
+                    showNotification('▶️ Playing', 'info');
+                });
+                
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    console.log('🎵 CAR BUTTON: Pause');
+                    audioElement.pause();
+                    isPlaying = false;
+                    navigator.mediaSession.playbackState = 'paused';
+                    updatePlayPauseUI();
+                    showNotification('⏸️ Paused', 'info');
+                });
+                
+                // MUST register both previoustrack and nexttrack for buttons to appear!
+                navigator.mediaSession.setActionHandler('previoustrack', () => {
+                    console.log('🎵 CAR BUTTON: Previous Track');
+                    showNotification('⏮️ Previous Track', 'info');
+                    // Send message to iframe
+                    try {
+                        const iframe = document.getElementById('music-iframe');
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({ action: 'previous' }, '*');
+                        }
+                    } catch (e) {}
+                });
+                
+                navigator.mediaSession.setActionHandler('nexttrack', () => {
+                    console.log('🎵 CAR BUTTON: Next Track');
+                    showNotification('⏭️ Next Track', 'info');
+                    // Send message to iframe
+                    try {
+                        const iframe = document.getElementById('music-iframe');
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({ action: 'next' }, '*');
+                        }
+                    } catch (e) {}
+                });
+                
+                // Optional: Seek actions (some cars use these)
+                try {
+                    navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+                        console.log('🎵 CAR BUTTON: Seek Backward');
+                        showNotification('⏪ Rewind', 'info');
+                    });
+                    
+                    navigator.mediaSession.setActionHandler('seekforward', (details) => {
+                        console.log('🎵 CAR BUTTON: Seek Forward');
+                        showNotification('⏩ Fast Forward', 'info');
+                    });
+                } catch (e) {
+                    console.log('Seek actions not supported');
+                }
+                
+                // Set playback state to playing (shows pause button)
+                navigator.mediaSession.playbackState = 'playing';
+                isPlaying = true;
+                
+                console.log('✅ Media Session handlers registered!');
+                console.log('✅ All 3 buttons should appear in notification!');
+                showMediaSessionStatus(true);
+                
+                // Show success
+                showNotification('✅ Bluetooth Controls Active!\n⏮️ ⏸️ ⏭️ All buttons enabled!', 'success');
+                
+                // Save activation
+                localStorage.setItem('autoverse-bluetooth-activated', 'true');
+                
+            } catch (error) {
+                console.error('❌ Media Session error:', error);
+                showMediaSessionStatus(false);
+                showNotification('❌ Bluetooth activation failed. Try again.', 'error');
+            }
+        } else {
+            showNotification('❌ Your browser doesn\'t support Bluetooth controls', 'error');
+        }
+        
+    }).catch(error => {
+        console.error('❌ Audio play failed:', error);
+        showNotification('❌ Could not start audio. Try again.', 'error');
+    });
+}
+
+// Update play/pause button UI
+function updatePlayPauseUI() {
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    if (playPauseBtn) {
+        const icon = playPauseBtn.querySelector('i');
+        if (icon) {
+            icon.className = isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+        }
+    }
+}
+
+// Show button feedback
+function showButtonFeedback(action) {
+    const message = action === 'next' ? '⏭️ Next Track' : '⏮️ Previous Track';
+    showNotification(message, 'info');
+}
+
+// Show notification
+function showNotification(message, type = 'success') {
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        info: '#3b82f6'
+    };
     
-    // Save activation state
-    localStorage.setItem('autoverse-bluetooth-activated', 'true');
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${colors[type]};
+        color: white;
+        padding: 15px 30px;
+        border-radius: 12px;
+        z-index: 10000;
+        font-weight: 600;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        animation: slideDown 0.3s ease;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 
 // Hide Bluetooth notice
@@ -2842,4 +2931,3 @@ document.querySelectorAll('iframe').forEach(iframe => {
 
 </body>
 </html>
-
